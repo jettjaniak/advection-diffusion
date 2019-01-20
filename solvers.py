@@ -7,7 +7,9 @@ def backward_euler(u_0: np.array, derivative_matrix: np.array, tau: float, m: in
     n = len(u_0) - 1
     u = np.empty((m+1, n+1))
     u[0] = u_0
-    for i in range(1, m+1):
+    u[1] = linear_solver(np.eye(n+1) - tau * derivative_matrix, u[0])
+    u[1, n] = 0
+    for i in range(2, m+1):
         u[i] = linear_solver(np.eye(n+1) - tau * derivative_matrix, u[i-1])
     return u
 
