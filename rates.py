@@ -52,3 +52,13 @@ def make_sigma2(params: Parameters) -> Callable[[float], float]:
     def sigma2(n: float) -> float:
         return 2*params.a*n
     return sigma2
+
+def make_sigma_sigma_prim(params: Parameters) -> Callable[[float], float]:
+    """Dla zadanych parametrów modelu zwraca funkcję sigma * pochodna funkcji sigma.
+
+    :param params: parametry modelu
+    :return: funkcja sigma'
+    """
+    def sigma_sigma_prim(n: float) -> float:
+        return params.a
+    return sigma_sigma_prim
