@@ -58,27 +58,39 @@ def fem_matrices(b, sigma2, sigma_sigma_prim, h, N):
     return A, M
 
 
-def fem_solving(A, M, backward):
-    if backward:
-        return A-M, A
-    else:
-        return A, A+M
+# N = 100
+# h = 0.1
+# u_0 = np.array([1] * (N))
+# tau = 0.001
+# m = 1000
+# params = ex_params_1
+def backward_euler_fem(N, h, u_0, tau, m, params):
+
+    A, M = fem_matrices(make_b(params), make_sigma2(params),
+                        make_sigma_sigma_prim(params), h, N)
+
+    B = A - tau*M
+    C = A  # Bu_k+1 = cu_k
+    u = np.empty((m + 1, N))  # u(t,x)
+    u[0] = u_0
+    for i in range(1, m + 1):
+        u[i] = spsolve(B, C @ u[i - 1])
+
+    plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
+    u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
+    return u
 
 
-def przyklad():
-    N = 100
-    h = 0.1
-    u_0 = np.array([1]*(N-1)+[0])
-    A,M = fem_matrices(make_b(ex_params_1), make_sigma2(ex_params_1), make_sigma_sigma_prim(ex_params_1), h, N)
-    #A,M = fem_solving(A,M,True)
-    a = (inv(A.toarray()) @ M.toarray()) * (1 / (h ** 2))
-    a = backward_euler(u_0, a, 0.001, 1000)
-    return a
-    # n = len(u_0) - 1
-    # u = np.empty((m+1, n+1))
-    # u[0] = u_0
-    # for i in range(1, m+1):
-    #     u[i] = linear_solver(np.eye(n+1) - tau * derivative_matrix, u[i-1])
-    # return u
+def trapezoids_fem(N, h, u_0, tau, m, params):
+    A, M = fem_matrices(make_b(params), make_sigma2(params),
+                        make_sigma_sigma_prim(params), h, N)
+    B = A - (tau/2) * M
+    C = A + (tau/2) * M # Bu_k+1 = cu_k
+    u = np.empty((m + 1, N))  # u(t,x)
+    u[0] = u_0
+    for i in range(1, m + 1):
+        u[i] = spsolve(B, C @ u[i - 1])
 
-    #0.001, 1000
+    plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
+    u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
+    return u
