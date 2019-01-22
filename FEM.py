@@ -66,7 +66,7 @@ def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: f
                           x[N-1], x[N])[0]
 
     # Macierz trójdiagonalna w postaci pasmowej
-    M = np.array([
+    M = (1/(h**2)) * np.array([
         [0] + M_over,
         M_diag,
         M_under + [0]
