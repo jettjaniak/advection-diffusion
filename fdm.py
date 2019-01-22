@@ -1,21 +1,22 @@
 import numpy as np
+import bandmat as bm
 
 from typing import Callable, Tuple
 
-from scipy import sparse
-from scipy.sparse import diags, csr_matrix
-from scipy.sparse.linalg import spsolve
+from scipy.linalg import solve_banded
 
 
-def fdm(b: Callable, sigma2: Callable, h: float, n: int) -> Tuple[csr_matrix, float]:
+def fdm(b: Callable, sigma2: Callable, h: float, n: int) ->\
+        Tuple[Tuple[np.array, Tuple[int, int]], float]:
     """Funkcja zwraca macierz (która pomnożona przez u daje u_t) i wartość specjalną.
 
-    Funkcja zwraca macierz A wymiaru n x n spełniającą
+    Funkcja zwraca macierz A w formie pasmowej wymiaru n x n, która spełnia
     w przybliżeniu (metoda różnic skończonych)
 
       Au = u_t = b(x)u_x + sigma^2(x)/2 u_xx,
 
-    oraz wartość specjalną, niezbędną w przypadku użycia schematu trapezów.
+    i liczbę pod- i naddiagonali oraz wartość specjalną,
+    niezbędną w przypadku użycia schematu trapezów.
 
     :param b: funkcja związana z adwekcją
     :param sigma2: funkcja związana z dyfuzją
@@ -36,14 +37,23 @@ def fdm(b: Callable, sigma2: Callable, h: float, n: int) -> Tuple[csr_matrix, fl
         # Obetniemy go i zwrócimy jako wartość specjalną.
         over1.append((s_k / 2) + b_k)
 
-    return diags((under, diagonal, over1[:-1], over2), (-1, 0, 1, 2)), over1[-1]
+    banded_matrix = np.array([
+        [0, 0] + over2,
+        [0] + over1[:-1],
+        diagonal,
+        under + [0]
+    ])
+    below = 1
+    above = 2
+    return (banded_matrix, (below, above)), over1[-1]
 
 
-def backward_euler(u_0: np.array, derivative_matrix: sparse.csr_matrix, tau: float, m: int):
+def backward_euler(u_0: np.array, derivative_matrix: Tuple[np.array, Tuple[int, int]], tau: float, m: int):
     """Schemat RRZ dla równania liniowego.
 
     :param u_0: warunek początkowy
-    :param derivative_matrix: macierz układu liniowego
+    :param derivative_matrix: macierz układu liniowego w formie pasmowej
+                              i krotka z liczbą pod- i naddiagonali
     :param tau: długość kroku
     :param m: liczba kroków
     :return: dyskretyzacja rozwiązania
@@ -51,8 +61,15 @@ def backward_euler(u_0: np.array, derivative_matrix: sparse.csr_matrix, tau: flo
     n = len(u_0)
     u = np.empty((m+1, n))
     u[0] = u_0
+    banded_matrix, (below, above) = derivative_matrix
     for i in range(1, m+1):
-        u[i] = spsolve(sparse.eye(n) - tau * derivative_matrix, u[i-1])
+        # Chcemy rozwiązywać układ
+        #   (Id - tau*D)x = u
+        system_matrix = - tau * banded_matrix
+        # Dodajemy identyczność do diagonali
+        system_matrix[above] += 1
+        u[i] = solve_banded((below, above), system_matrix, u[i-1])
+        # u[i] = spsolve(sparse.eye(n) - tau * derivative_matrix, u[i-1])
     return u
 
 
@@ -72,16 +89,34 @@ def trapezoids(u_0: np.array, derivative_matrix: np.array, special: float,
     u = np.empty((m+1, n))
     u[0] = u_0
 
-    first_right_vector = (sparse.eye(n) + 0.5 * tau * derivative_matrix) @ u[0]
+    banded_matrix, (below, above) = derivative_matrix
+    # Chcemy rozwiązywać układ
+    #   (Id - 0.5*tau*D)x = (Id + 0.5*tau*d)u.
+
+    # Tworzymy macierz układu
+    system_matrix = - 0.5 * tau * banded_matrix
+    # Dodajemy identyczność do diagonali
+    system_matrix[above] += 1
+
+    # Tworzymy instancję BandMat, żeby przemnażać przez u
+    rhs_matrix = 0.5 * tau * banded_matrix
+    rhs_matrix[above] += 1
+    rhs_matrix = bm.band_c_bm(below, above, rhs_matrix)
+
+    # Mnożenie macierzy pasmowej przez wektor
+    first_right_vector = bm.dot_mv(rhs_matrix, u[0])
     first_right_vector[-1] += 0.5 * tau * special
-    u[1] = spsolve(
-        sparse.eye(n) - 0.5 * tau * derivative_matrix,
+    u[1] = solve_banded(
+        (below, above),
+        system_matrix,
         first_right_vector
     )
 
     for i in range(2, m+1):
-        u[i] = spsolve(
-            sparse.eye(n) - 0.5 * tau * derivative_matrix,
-            (sparse.eye(n) + 0.5 * tau * derivative_matrix) @ u[i-1]
+        u[i] = solve_banded(
+            (below, above),
+            system_matrix,
+            # Mnożenie macierzy pasmowej przez wektor
+            bm.dot_mv(rhs_matrix, u[i-1])
         )
     return u
