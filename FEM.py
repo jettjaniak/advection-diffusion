@@ -1,4 +1,4 @@
-from scipy.sparse import diags
+from scipy.sparse import diags, csr_matrix
 from scipy.integrate import quad
 from scipy.linalg import inv
 import numpy as np
@@ -7,9 +7,11 @@ from rates import make_b, make_sigma2,make_sigma_sigma_prim
 from solvers import backward_euler
 import matplotlib.pyplot as plt
 from scipy.sparse.linalg import spsolve
+from typing import Callable, Tuple
 
 
-def fem_matrices(b, sigma2, sigma_sigma_prim, h, N):
+def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: float, N: int) \
+        -> Tuple[csr_matrix, csr_matrix]:
     """
     Otrzymamy zadanie postaci A*(du/dt) = M*u, gdzie:
     - A - macierz z 1 nad i pod diagonalą, 4 na diagonali poza pierwszym wierszem - tam 2, całość
@@ -20,8 +22,11 @@ def fem_matrices(b, sigma2, sigma_sigma_prim, h, N):
     - D[k,l] = integral(1/2*sigma^2(x)*phi_l'*phi_k')
     wszystkie macierze trójdiagonalne
     :param b:
+    :param sigma2:
     :param sigma_sigma_prim = sigma*sigma'
-    :return:
+    :param h: długość kroku dla siatki
+    :param N: liczba punktów siatki -1
+    :return: macierze A i M spełniające A*(du/dt) = M*u
     """
 
     # siatka dla x
@@ -58,13 +63,24 @@ def fem_matrices(b, sigma2, sigma_sigma_prim, h, N):
     return A, M
 
 
-# N = 100
+# N = 200
 # h = 0.1
 # u_0 = np.array([1] * (N))
 # tau = 0.001
 # m = 1000
 # params = ex_params_1
-def backward_euler_fem(N, h, u_0, tau, m, params):
+def backward_euler_fem(N: int, h: float, u_0: np.array, tau: float, m: int, params):
+    """
+    Schemat zamknięty Eulera dla problemu z wykorzystaniem metody elementu skończonego do
+    przybliżania pochodnych po zmiennej x.
+    :param N: liczba punktów w siatce zmiennej x -1
+    :param h: krok siatki dla x
+    :param u_0: wektor początkowy
+    :param tau: krok siatki dla t
+    :param m: liczba punktów w siatce dla t -1
+    :param params: obiekt zawierający wszystkie parametry
+    :return: macierz z przybliżonymi wartościami funkcji u w punktach siatki
+    """
 
     A, M = fem_matrices(make_b(params), make_sigma2(params),
                         make_sigma_sigma_prim(params), h, N)
@@ -81,7 +97,18 @@ def backward_euler_fem(N, h, u_0, tau, m, params):
     return u
 
 
-def trapezoids_fem(N, h, u_0, tau, m, params):
+def trapezoids_fem(N: int, h: float, u_0: np.array, tau: float, m: int, params):
+    """
+    Schemat Cranka-Nicholson dla problemu z wykorzystaniem metody elementu skończonego do
+    przybliżania pochodnych po zmiennej x.
+    :param N:
+    :param h:
+    :param u_0:
+    :param tau:
+    :param m:
+    :param params:
+    :return:
+    """
     A, M = fem_matrices(make_b(params), make_sigma2(params),
                         make_sigma_sigma_prim(params), h, N)
     B = A - (tau/2) * M
