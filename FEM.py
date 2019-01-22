@@ -1,17 +1,19 @@
 import numpy as np
+import bandmat as bm
 import matplotlib.pyplot as plt
 
 from typing import Callable, Tuple
 
 from scipy.sparse import diags, csr_matrix
 from scipy.sparse.linalg import spsolve
+from scipy.linalg import solve_banded
 from scipy.integrate import quad
 
-from rates import make_b, make_sigma2,make_sigma_sigma_prim
+from rates import make_b, make_sigma2, make_sigma_sigma_prim
 
 
 def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: float, N: int) \
-        -> Tuple[csr_matrix, csr_matrix]:
+        -> Tuple[Tuple[np.array, Tuple[int, int]], Tuple[np.array, Tuple[int, int]]]:
     """
     Otrzymamy zadanie postaci A*(du/dt) = M*u, gdzie:
     - A - macierz z 1 nad i pod diagonalą, 4 na diagonali poza pierwszym wierszem - tam 2, całość
@@ -37,7 +39,12 @@ def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: f
         l = l + h
 
 
-    A = diags([[h/6]*(N-1), [h/3]+[2*h/3]*(N-1), [h/6]*(N-1)], [-1, 0, 1])
+    #A = diags([[h/6]*(N-1), [h/3]+[2*h/3]*(N-1), [h/6]*(N-1)], [-1, 0, 1])
+    A = np.array([
+        [0] + [h / 6] * (N - 1),
+        [h / 3] + [2 * h / 3] * (N - 1),
+        [h / 6] * (N - 1) + [0]
+    ])
 
     # iterowanie po kwadratach
     M_over = [quad(lambda y: (b(y) - sigma_sigma_prim(y)) * (h-y) + (sigma2(y)/2), 0, h)[0]]
@@ -57,10 +64,14 @@ def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: f
 
     M_diag[N-1] += quad(lambda y: (b(y) - sigma_sigma_prim(y)) * (y-x[N]) - (sigma2(y) / 2),
                           x[N-1], x[N])[0]
-    M = diags([M_under, M_diag, M_over], [-1, 0, 1])
-
-
-    return A, M
+    #M = diags([M_under, M_diag, M_over], [-1, 0, 1])
+    M = np.array([
+        [0] + M_over,
+        M_diag,
+        M_under + [0]
+    ])
+    # Zwracamy pary (macierz, (liczba poddiagonali, liczba naddiagonali))
+    return (A, (1, 1)), (M, (1, 1))
 
 
 # N = 200
@@ -82,17 +93,37 @@ def backward_euler_fem(N: int, h: float, u_0: np.array, tau: float, m: int, para
     :return: macierz z przybliżonymi wartościami funkcji u w punktach siatki
     """
 
-    A, M = fem_matrices(make_b(params), make_sigma2(params),
-                        make_sigma_sigma_prim(params), h, N)
+    (A, (A_below, A_above)), (M, (M_below, M_above)) = fem_matrices(
+        make_b(params), make_sigma2(params),
+        make_sigma_sigma_prim(params), h, N
+    )
+
+    # Chcemy rozwiązywać układ
+    #   (A - tau*M)x = A*u
+
+    # Tworzymy macierz układu
+    # Tutaj zakładamy, że A i M mają taki sam kształt w formie pasmowej,
+    # ogólnie trzeba użyć funkcji z bm.
+    system_matrix = A - tau * M
+
+    # Tworzymy instancję BandMat, żeby przemnażać przez u
+    rhs_matrix = bm.band_c_bm(A_below, A_above, A)
 
     B = A - tau*M
     C = A  # Bu_k+1 = cu_k
     u = np.empty((m + 1, N))  # u(t,x)
     u[0] = u_0
     for i in range(1, m + 1):
-        u[i] = spsolve(B, C @ u[i - 1])
+        u[i] = solve_banded(
+            # Kształt macierzy układu jest taki sam jak macierzy A
+            (A_below, A_above),
+            system_matrix,
+            # Mnożenie macierzy pasmowej przez wektor
+            bm.dot_mv(rhs_matrix, u[i - 1])
+        )
+        #u[i] = spsolve(B, C @ u[i - 1])
 
-    plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
+    #plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
     u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
     return u
 
