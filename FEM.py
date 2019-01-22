@@ -64,7 +64,8 @@ def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: f
 
     M_diag[N-1] += quad(lambda y: (b(y) - sigma_sigma_prim(y)) * (y-x[N]) - (sigma2(y) / 2),
                           x[N-1], x[N])[0]
-    #M = diags([M_under, M_diag, M_over], [-1, 0, 1])
+
+    # Macierz trójdiagonalna w postaci pasmowej
     M = np.array([
         [0] + M_over,
         M_diag,
@@ -74,12 +75,7 @@ def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: f
     return (A, (1, 1)), (M, (1, 1))
 
 
-# N = 200
-# h = 0.1
-# u_0 = np.array([1] * (N))
-# tau = 0.001
-# m = 1000
-# params = ex_params_1
+
 def backward_euler_fem(N: int, h: float, u_0: np.array, tau: float, m: int, params):
     """
     Schemat zamknięty Eulera dla problemu z wykorzystaniem metody elementu skończonego do
@@ -109,8 +105,6 @@ def backward_euler_fem(N: int, h: float, u_0: np.array, tau: float, m: int, para
     # Tworzymy instancję BandMat, żeby przemnażać przez u
     rhs_matrix = bm.band_c_bm(A_below, A_above, A)
 
-    B = A - tau*M
-    C = A  # Bu_k+1 = cu_k
     u = np.empty((m + 1, N))  # u(t,x)
     u[0] = u_0
     for i in range(1, m + 1):
@@ -121,7 +115,6 @@ def backward_euler_fem(N: int, h: float, u_0: np.array, tau: float, m: int, para
             # Mnożenie macierzy pasmowej przez wektor
             bm.dot_mv(rhs_matrix, u[i - 1])
         )
-        #u[i] = spsolve(B, C @ u[i - 1])
 
     #plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
     u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
