@@ -60,7 +60,7 @@ def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: f
     M = diags([M_under, M_diag, M_over], [-1, 0, 1])
 
 
-    return A, M
+    return A, (1/(h**2))*M
 
 
 # N = 200
