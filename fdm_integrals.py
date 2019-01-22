@@ -7,7 +7,7 @@ from scipy.linalg import solve_banded
 
 
 def backward_euler_int(u_0: np.array, derivative_mat: Tuple[np.array, Tuple[int, int]],
-                   tau: float, tol: float, int_u: Union[np.array, None] = None):
+                       tau: float, tol: float, int_u: Union[np.array, None] = None):
     """Schemat RRZ dla równania liniowego wraz z całkowaniem rozwiązania w locie.
 
     :param u_0: warunek początkowy

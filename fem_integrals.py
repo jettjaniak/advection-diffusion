@@ -1,13 +1,16 @@
-from scipy.sparse import diags, csr_matrix
 import numpy as np
-from params import ex_params_1
-from rates import make_b, make_sigma2,make_sigma_sigma_prim
-import matplotlib.pyplot as plt
-from scipy.sparse.linalg import spsolve
-from FEM import fem_matrices
-from typing import Callable, Tuple
+import bandmat as bm
 
-def backward_euler_fem_int(N: int, h: float, u_0: np.array, tau: float, params, tol: float):
+from typing import Union
+
+from scipy.linalg import solve_banded
+
+from rates import make_b, make_sigma2, make_sigma_sigma_prim
+from FEM import fem_matrices
+
+
+def backward_euler_fem_int(N: int, h: float, u_0: np.array, params, tau: float,
+                           tol: float, int_u: Union[np.array, None] = None):
     """
     Schemat zamknięty Eulera dla problemu z wykorzystaniem metody elementu skończonego do
     przybliżania pochodnych po zmiennej x.
@@ -15,84 +18,92 @@ def backward_euler_fem_int(N: int, h: float, u_0: np.array, tau: float, params, 
     :param h: krok siatki dla x
     :param u_0: wektor początkowy
     :param tau: krok siatki dla t
-    :param tol: maksymalna dopuszczalna wartość funkcji po wykonaniu symulacji
     :param params: obiekt zawierający wszystkie parametry
-    :return: wektor z całkami \int_0^\inf u(t,x)dt dla x z siatki
+    :param tol: jeżeli funkcja jest < tol to kończymy rozwiązywanie i całkowanie
+    :param int_u: początkowa wartość całki
+    :return: macierz z przybliżonymi wartościami funkcji u w punktach siatki
     """
+    if int_u is None:
+        int_u = np.zeros_like(u_0)
+    u_old = u_0.copy()
+    (A, (A_below, A_above)), (M, (M_below, M_above)) = fem_matrices(
+        make_b(params), make_sigma2(params),
+        make_sigma_sigma_prim(params), h, N
+    )
 
-    A, M = fem_matrices(make_b(params), make_sigma2(params),
-                        make_sigma_sigma_prim(params), h, N)
+    # Chcemy rozwiązywać układ
+    #   (A - tau*M)x = A*u
 
-    B = A - tau*M
-    C = A  # Bu_k+1 = cu_k
-    u_prev = u_0  # u(t,x)
-    integral = np.empty((1, N))
-    cond = True
-    iterat = 1
-    while cond:
-        # następna obliczona wartość wektora
-        u_next = spsolve(B, C @ u_prev)
-        # wartość całek na odcinku długości tau i dodanie do wektora wyników
-        integral += 0.5 * tau * (u_next + u_prev)
-        # sprawdzenie warunku u < tol dla wszystkich x0
-        cond = False
-        for i in range((N//4)*3, N):
-            if u_next[i] > tol:
-                cond = True
-                break
-        u_prev = u_next
-        if iterat%10000 == 0 :
-            print(iterat)
-        iterat += 1
+    # Tworzymy macierz układu
+    # Tutaj zakładamy, że A i M mają taki sam kształt w formie pasmowej,
+    # ogólnie trzeba użyć funkcji z bm.
+    system_matrix = A - tau * M
 
-    # TODO: trzeba dodać na końcu 0 dla początkowej maks liczby wiązań
-    return integral
-def trapezoids_fem_integrals(N: int, h: float, u_0: np.array, tau: float, tol: float, params):
+    # Tworzymy instancję BandMat, żeby przemnażać przez u
+    rhs_matrix = bm.band_c_bm(A_below, A_above, A)
+
+    i = 1
+    while np.any(u_old >= tol):
+        u_new = solve_banded(
+            # Kształt macierzy układu jest taki sam jak macierzy A
+            (A_below, A_above),
+            system_matrix,
+            # Mnożenie macierzy pasmowej przez wektor
+            bm.dot_mv(rhs_matrix, u_old)
+        )
+        int_u += tau * (u_old + u_new) / 2
+        u_old = u_new
+        i += 1
+
+    return int_u
+
+
+def trapezoids_fem_int(N: int, h: float, u_0: np.array, params, tau: float,
+                       tol: float, int_u: Union[np.array, None] = None):
     """
     Schemat Cranka-Nicholson dla problemu z wykorzystaniem metody elementu skończonego do
     przybliżania pochodnych po zmiennej x.
     :param N:
     :param h:
     :param u_0:
-    :param tau:
-    :param tol: maksymalna dopuszczalna wartość funkcji po wykonaniu symulacji
     :param params:
-    :return: wektor z całkami dla u po t dla początkowych x0
+    :param tau:
+    :param tol: jeżeli funkcja jest < tol to kończymy rozwiązywanie i całkowanie
+    :param int_u: początkowa wartość całki
+    :return:
     """
-    A, M = fem_matrices(make_b(params), make_sigma2(params),
-                        make_sigma_sigma_prim(params), h, N)
-    B = A - (tau/2) * M
-    C = A + (tau/2) * M # Bu_k+1 = cu_k
-    u_prev = u_0
-    integral = np.empty((1, N))
-    cond = True
-    iterat = 1
-    while cond:
-        # następna obliczona wartość wektora
-        u_next = spsolve(B, C @ u_prev)
-        # wartość całek na odcinku długości tau i dodanie do wektora wyników
-        integral += 0.5 * tau * (u_next + u_prev)
-        # sprawdzenie warunku u < tol dla wszystkich x0
-        cond = False
-        for i in range(N):
-            if u_next[i] > tol:
-                cond = True
-                break
-        u_prev = u_next
-        if iterat % 10000 == 0:
-            print(iterat)
-        iterat += 1
+    if int_u is None:
+        int_u = np.zeros_like(u_0)
+    u_old = u_0.copy()
+    (A, (A_below, A_above)), (M, (M_below, M_above)) = fem_matrices(
+        make_b(params), make_sigma2(params),
+        make_sigma_sigma_prim(params), h, N
+    )
 
-    #TODO:trzeba dodać na końcu 0 dla początkowej maks liczby wiązań
-    return integral
+    # Chcemy rozwiązywać układ
+    #   (A - 0.5*tau*M)x = (A + 0.5*tau*M)*u
 
+    # Tworzymy macierz układu
+    # Tutaj zakładamy, że A i M mają taki sam kształt w formie pasmowej,
+    # ogólnie trzeba użyć funkcji z bm.
+    system_matrix = A - 0.5 * tau * M
 
-N = 200
-h = 0.1
-u_0 = np.array([1] * (N))
-tau = 0.001
-tol = 0.01
-params = ex_params_1
+    # Tworzymy instancję BandMat, żeby przemnażać przez u
+    rhs_matrix = A + 0.5 * tau * M
+    rhs_matrix = bm.band_c_bm(A_below, A_above, rhs_matrix)
 
-integ = backward_euler_fem_int(N, h, u_0, tau, params, tol)
-print(integ)
+    i = 1
+    while np.any(u_old >= tol):
+        u_new = solve_banded(
+            # Kształt macierzy układu jest taki sam jak macierzy A
+            (A_below, A_above),
+            system_matrix,
+            # Mnożenie macierzy pasmowej przez wektor
+            bm.dot_mv(rhs_matrix, u_old)
+        )
+        int_u += tau * (u_old + u_new)/2
+        u_old = u_new
+        i += 1
+    else:
+        print(f"Zakończono całkowanie w momencie {i*tau}, po {i} iteracji.")
+    return int_u
