@@ -6,7 +6,7 @@ from typing import Callable, Tuple
 from scipy.linalg import solve_banded
 
 
-def fdm(b: Callable, sigma2: Callable, h: float, n: int) ->\
+def derivative_matrix(b: Callable, sigma2: Callable, h: float, n: int) ->\
         Tuple[Tuple[np.array, Tuple[int, int]], float]:
     """Funkcja zwraca macierz (która pomnożona przez u daje u_t) i wartość specjalną.
 
@@ -48,12 +48,13 @@ def fdm(b: Callable, sigma2: Callable, h: float, n: int) ->\
     return (banded_matrix, (below, above)), over1[-1]
 
 
-def backward_euler(u_0: np.array, derivative_matrix: Tuple[np.array, Tuple[int, int]], tau: float, m: int):
+def backward_euler(u_0: np.array, derivative_mat: Tuple[np.array, Tuple[int, int]],
+                   tau: float, m: int):
     """Schemat RRZ dla równania liniowego.
 
     :param u_0: warunek początkowy
-    :param derivative_matrix: macierz układu liniowego w formie pasmowej
-                              i krotka z liczbą pod- i naddiagonali
+    :param derivative_mat: macierz układu liniowego w formie pasmowej
+                           i krotka z liczbą pod- i naddiagonali
     :param tau: długość kroku
     :param m: liczba kroków
     :return: dyskretyzacja rozwiązania
@@ -61,25 +62,25 @@ def backward_euler(u_0: np.array, derivative_matrix: Tuple[np.array, Tuple[int, 
     n = len(u_0)
     u = np.empty((m+1, n))
     u[0] = u_0
-    banded_matrix, (below, above) = derivative_matrix
+    banded_matrix, (below, above) = derivative_mat
+    # Chcemy rozwiązywać układ
+    #   (Id - tau*D)x = u
+    # Tworzymy macierz układu
+    system_matrix = - tau * banded_matrix
+    # Dodajemy identyczność do diagonali
+    system_matrix[above] += 1
     for i in range(1, m+1):
-        # Chcemy rozwiązywać układ
-        #   (Id - tau*D)x = u
-        system_matrix = - tau * banded_matrix
-        # Dodajemy identyczność do diagonali
-        system_matrix[above] += 1
         u[i] = solve_banded((below, above), system_matrix, u[i-1])
-        # u[i] = spsolve(sparse.eye(n) - tau * derivative_matrix, u[i-1])
     return u
 
 
-def trapezoids(u_0: np.array, derivative_matrix: np.array, special: float,
+def trapezoids(u_0: np.array, derivative_mat: np.array, special: float,
                tau: float, m: int):
     """Schemat RRZ dla równania adwekcji-dyfuzji z nieciągłym warunkiem brzegowym.
 
 
     :param u_0: warunek początkowy
-    :param derivative_matrix: macierz układu liniowego
+    :param derivative_mat: macierz układu liniowego
     :param special: wartość zastępująca warunek brzegowy w punkcie nieciągłości
     :param tau: długość kroku
     :param m: liczba kroków
@@ -89,9 +90,9 @@ def trapezoids(u_0: np.array, derivative_matrix: np.array, special: float,
     u = np.empty((m+1, n))
     u[0] = u_0
 
-    banded_matrix, (below, above) = derivative_matrix
+    banded_matrix, (below, above) = derivative_mat
     # Chcemy rozwiązywać układ
-    #   (Id - 0.5*tau*D)x = (Id + 0.5*tau*d)u.
+    #   (Id - 0.5*tau*D)x = (Id + 0.5*tau*D)u.
 
     # Tworzymy macierz układu
     system_matrix = - 0.5 * tau * banded_matrix
@@ -120,3 +121,4 @@ def trapezoids(u_0: np.array, derivative_matrix: np.array, special: float,
             bm.dot_mv(rhs_matrix, u[i-1])
         )
     return u
+
