@@ -75,7 +75,6 @@ def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: f
     return (A, (1, 1)), (M, (1, 1))
 
 
-
 def backward_euler_fem(N: int, h: float, u_0: np.array, tau: float, m: int, params):
     """
     Schemat zamknięty Eulera dla problemu z wykorzystaniem metody elementu skończonego do
@@ -117,7 +116,7 @@ def backward_euler_fem(N: int, h: float, u_0: np.array, tau: float, m: int, para
         )
 
     #plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
-    u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
+    #u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
     return u
 
 
@@ -133,15 +132,35 @@ def trapezoids_fem(N: int, h: float, u_0: np.array, tau: float, m: int, params):
     :param params:
     :return:
     """
-    A, M = fem_matrices(make_b(params), make_sigma2(params),
-                        make_sigma_sigma_prim(params), h, N)
-    B = A - (tau/2) * M
-    C = A + (tau/2) * M # Bu_k+1 = cu_k
+
+    (A, (A_below, A_above)), (M, (M_below, M_above)) = fem_matrices(
+        make_b(params), make_sigma2(params),
+        make_sigma_sigma_prim(params), h, N
+    )
+
+    # Chcemy rozwiązywać układ
+    #   (A - 0.5*tau*M)x = (A + 0.5*tau*M)*u
+
+    # Tworzymy macierz układu
+    # Tutaj zakładamy, że A i M mają taki sam kształt w formie pasmowej,
+    # ogólnie trzeba użyć funkcji z bm.
+    system_matrix = A - 0.5 * tau * M
+
+    # Tworzymy instancję BandMat, żeby przemnażać przez u
+    rhs_matrix = A + 0.5 * tau * M
+    rhs_matrix = bm.band_c_bm(A_below, A_above, rhs_matrix)
+
     u = np.empty((m + 1, N))  # u(t,x)
     u[0] = u_0
     for i in range(1, m + 1):
-        u[i] = spsolve(B, C @ u[i - 1])
+        u[i] = solve_banded(
+            # Kształt macierzy układu jest taki sam jak macierzy A
+            (A_below, A_above),
+            system_matrix,
+            # Mnożenie macierzy pasmowej przez wektor
+            bm.dot_mv(rhs_matrix, u[i-1])
+        )
 
-    plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
-    u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
+    #plt.imshow(u.T, origin="low", extent=[0, 10, 0, 10])
+    #u = np.concatenate((u, np.array([([0] * (m + 1))]).T), axis=1)
     return u
