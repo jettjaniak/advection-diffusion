@@ -1,13 +1,13 @@
-from scipy.sparse import diags, csr_matrix
-from scipy.integrate import quad
-from scipy.linalg import inv
 import numpy as np
-from params import ex_params_1
-from rates import make_b, make_sigma2,make_sigma_sigma_prim
-from solvers import backward_euler
 import matplotlib.pyplot as plt
-from scipy.sparse.linalg import spsolve
+
 from typing import Callable, Tuple
+
+from scipy.sparse import diags, csr_matrix
+from scipy.sparse.linalg import spsolve
+from scipy.integrate import quad
+
+from rates import make_b, make_sigma2,make_sigma_sigma_prim
 
 
 def fem_matrices(b: Callable, sigma2: Callable, sigma_sigma_prim: Callable, h: float, N: int) \
