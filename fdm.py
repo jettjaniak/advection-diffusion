@@ -24,10 +24,9 @@ def derivative_matrix(b: Callable, sigma2: Callable, h: float, n: int) ->\
     :param n: liczba kroków
     :return:
     """
-    diagonal = [-3 / (2 * h)]
+    diagonal = [0]
     under = []
-    over1 = [2 / h]
-    over2 = [-1 / (2 * h)] + [0] * (n - 3)
+    over1 = [0]
     for k in range(1, n):
         s_k = sigma2(h * k) / (h ** 2)
         b_k = b(h * k) / (2 * h)
@@ -38,13 +37,12 @@ def derivative_matrix(b: Callable, sigma2: Callable, h: float, n: int) ->\
         over1.append((s_k / 2) + b_k)
 
     banded_matrix = np.array([
-        [0, 0] + over2,
         [0] + over1[:-1],
         diagonal,
         under + [0]
     ])
     below = 1
-    above = 2
+    above = 1
     return (banded_matrix, (below, above)), over1[-1]
 
 
