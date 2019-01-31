@@ -32,7 +32,7 @@ def backward_euler_int(u_0: np.array, derivative_mat: Tuple[np.array, Tuple[int,
     system_matrix[above] += 1
 
     i = 1
-    while np.any(u_old >= tol):
+    while np.any(u_old[10:] >= tol):
         u_new = solve_banded((below, above), system_matrix, u_old)
         int_u += tau * (u_old + u_new)/2
         u_old = u_new
@@ -145,7 +145,7 @@ def trapezoids_int(u_0: np.array, derivative_mat: np.array, special: float,
     int_u += tau * (u_old + u_new) / 2
 
     i = 1
-    while np.any(u_old >= tol):
+    while np.any(u_old[10:] >= tol):
         u_new = solve_banded(
             (below, above),
             system_matrix,

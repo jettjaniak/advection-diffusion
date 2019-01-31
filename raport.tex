@@ -1,0 +1,741 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{bbm}
+\usepackage{polski}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsfonts}
+\usepackage[top=1in, bottom=1in, left=0.9in, right=0.8in]{geometry}
+\title{Numeryczne metody rozwiązywania przykładowego równania adwekcji-dyfuzji}
+\author{Kajetan Janiak, Agata Lonc}
+
+\begin{document}
+\maketitle
+\section{Rozważany problem}
+Badane przez nas równanie adwekcji-dyfuzji pochodzi z pracy Christèle Etchegaray i Nicolasa Meuniera \textit{A stochastic model for cell adhesion to the vascular wall} i ma postać:
+\begin{equation}\label{rownanie}
+\frac{\partial u(t, x)}{\partial t} = b(x) \frac{\partial}{\partial x} u(t, x) + \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x),
+\end{equation}
+gdzie:
+\begin{align*}
+b(x) &= c + (r - d\cdot e^{\alpha(\beta - \gamma \cdot x)})\cdot x, \\
+\sigma^{2}(x) &= 2\cdot a \cdot x,
+\end{align*}
+z warunkami początkowymi:
+\begin{align*}
+u(0, x) &= \mathbbm{1}_{\lbrack 0, n^{*} \rbrack } (x) = 1, \\
+u(t, N^{*}) &= 0, \\
+\frac{\partial}{\partial x} u(t, 0) &= 0. 
+\end{align*}
+
+Naszym celem jest numeryczne rozwiązanie tego równania dla $x\in[0,N^{*}]$ oraz $t\in[0,T]$ dla pewnego $T$. W tym celu zastosujemy dyskretyzację zmiennej $x$ za pomocą metody różnic skończonych oraz metody elementu skończonego. Następnie wykorzystamy zamknięty schemat Eulera oraz schemat Cranka-Nicolson do rozwiązania układu równań różniczkowych zwyczajnych pierwszego rzędu. Na końcu porównamy otrzymane wyniki i oszacujemy błędy dla każdej z zastosowanych metod.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\section{Opis macierzy pasmowych}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Metoda różnic skończonych}
+\subsection{Dyskretyzacja przestrzeni względem zmiennej $x$}\label{mrs dys}
+
+Przybliżamy pochodne \(\frac{\partial}{\partial x} u(t, x)\) oraz \(\frac{\partial^{2}}{\partial {x}^{2}} u(t, x)\) za pomocą sąsiednich punktów tak, aby uzyskać przybliżenia rzędu $O(h^2)$:
+\begin{equation}\label{mrs x}
+\begin{aligned}
+\frac{\partial}{\partial x} u(t, x) &\approx \frac{u(t, x+h) - u(t, x-h)}{2 h}, \\
+\frac{\partial^{2}}{\partial {x}^{2}} u(t, x) &\approx \frac{u(t, x-h) - 2u(t,x)+u(t, x+h)}{h^{2}}.
+\end{aligned}
+\end{equation}
+
+Na przedziale $[0, n^{*}]$ wprowadzamy równomierną siatkę $\{x_k\}_{k=0}^{n} = \{k\cdot h\}_{k=0}^{n}$, gdzie $n\cdot h = N^{*}$. Dla $k=1,\dots,n-1$ równania \eqref{mrs x} przyjmują postać:
+\begin{equation*}
+\begin{aligned}
+\frac{\partial}{\partial x} u(t, x_{k}) &\approx \frac{u(t, x_{k+1}) - u(t, x_{k-1})}{2 h}, \\
+\frac{\partial^{2}}{\partial {x}^{2}} u(t, x_{k}) &\approx \frac{u(t, x_{k-1}) - 2u(t,x_{k})+u(t, x_{k+1})}{h^{2}}.
+\end{aligned}
+\end{equation*}
+Dzięki temu możemy przybliżyć pochodną funkcji $u$ po czasie w punkcie $(t,x_k)$:
+\begin{equation}\label{mrs xk}
+\begin{aligned}
+\frac{\partial u(t, x_k)}{\partial t} &\approx b(x_{k}) \frac{u(t, x_{k+1}) - u(t, x_{k-1})}{2 h} + \frac{1}{2} \sigma^{2}(x_{k}) \frac{u(t, x_{k-1}) - 2u(t,x_{k})+u(t, x_{k+1})}{h^{2}},\\
+&\approx u(t, x_{k-1})\cdot\Big(\frac{\sigma^{2}(x_{k})}{2h^{2}} -\frac{b(x_{k})}{2h}\Big) - u(t,x_{k})\cdot\frac{\sigma^{2}(x_{k})}{h^{2}} + u(t,x_{k-1}) \cdot\Big(\frac{\sigma^{2}(x_{k})}{2h^{2}} +\frac{b(x_{k})}{2h}\Big).
+\end{aligned}
+\end{equation}
+Dla $x_0 = 0$ mamy z warunków początkowych układu, że $\frac{\partial}{\partial x} u(t, 0) = 0$. Ponadto $\sigma^{2}(0) = 0$. Zatem z równania \eqref{rownanie}:
+\begin{equation}\label{mrs x0}
+\frac{\partial u(t, x_{0})}{\partial t} = \frac{\partial u(t, 0)}{\partial t} = 0.
+\end{equation}
+Podobnie dla $x_{n} = N^{*}$ z warunku początkowego $u(t, N^{*}) = 0$ otrzymujemy:
+\begin{equation}\label{mrs xn}
+\frac{\partial u(t, x_{n})}{\partial t} = \frac{\partial u(t, N^{*})}{\partial t} = 0.
+\end{equation}
+
+Na podstawie równań \eqref{mrs xk}-\eqref{mrs xn} możemy przybliżyć pochodną funkcji $u(t) = [u(t, x_{0}), u(t, x_{1}), \dots , u(t, x_{n}) ]^{T}$ równaniem:
+\begin{equation*}
+\frac{d}{dt}u(t) \approx A_0 \cdot u(t),
+\end{equation*}
+gdzie $A_0$ jest trójdiagonalną macierzą liczb rzeczywistych o wymiarach $(n+1)\times(n+1)$:
+\begin{equation*}
+A_0 = \begin{bmatrix}
+	0 & 0 & 0 &  \cdots & 0 & 0 & 0
+	\\
+	\frac{\sigma^{2}(x_{1})}{2 h^{2}} - \frac{b(x_{1})}{2 h} & -\frac{\sigma^{2}(x_{1})}{h^{2}} & \frac{\sigma^{2}(x_{1})}{2 h^{2}} + \frac{b(x_{1})}{2 h} & \cdots & 0 & 0 & 0
+	\\
+	&  &  &  &  &  & 
+	\\
+	&  &  & \ddots &  &  & 
+	\\
+	&  &  &  &  &  & 
+	\\
+	0 & 0 & 0 & \cdots & \frac{\sigma^{2}(x_{n-1})}{2 h^{2}} - \frac{b(x_{n-1})}{2 h} & -\frac{\sigma^{2}(x_{n-1})}{h^{2}} & \frac{\sigma^{2}(x_{n-1})}{2 h^{2}} + \frac{b(x_{n-1})}{2 h}
+	\\
+	0 & 0 & 0 & \cdots & 0 & 0 & 0
+\end{bmatrix}.
+\end{equation*}
+
+Z warunków początkowych mamy $u(t, N^{*}) = 0$. Z tego powodu w dalszych rozważaniach zmniejszymy wymiar problemu o 1 poprzez usunięcie z macierzy $A_0$ ostatniej kolumny i ostatniego wiersza. Problem stanowi punkt $(0,N^{*})$, w którym występuje nieciągłość warunku początkowego. Ze względu na pojawiające się błędy w schemacie trapezów, dla tej metody musimy założyć, że $u(0, N^{*}) = 1$, co wymusza zapisanie dodatkowo współczynnika $A_0(n,n+1) = \frac{\sigma^{2}(x_{n-1})}{2 h^{2}} + \frac{b(x_{n-1})}{2 h}$, przez który mnożymy $u(0, N^{*})$.
+
+Ostatecznie chcemy rozwiązać problem:
+\begin{equation*}
+\frac{d}{dt}u(t) \approx A \cdot u(t),
+\end{equation*}
+gdzie $u(t) = [u(t, x_{0}), u(t, x_{1}), \dots , u(t, x_{n-1}) ]^{T}$, natomiast $A$ jest trójdiagonalną macierzą o wymiarach $n\times n$ postaci:
+\begin{equation*}
+A = \begin{bmatrix}
+0 & 0 & 0 &  \cdots & 0 & 0 
+\\
+\frac{\sigma^{2}(x_{1})}{2 h^{2}} - \frac{b(x_{1})}{2 h} & -\frac{\sigma^{2}(x_{1})}{h^{2}} & \frac{\sigma^{2}(x_{1})}{2 h^{2}} + \frac{b(x_{1})}{2 h} & \cdots & 0 & 0 
+\\
+&  &  &  &  & 
+\\
+&  &  & \ddots &  & 
+\\
+&  &  &  &  & 
+\\
+0 & 0 & 0 & \cdots & \frac{\sigma^{2}(x_{n-1})}{2 h^{2}} - \frac{b(x_{n-1})}{2 h} & -\frac{\sigma^{2}(x_{n-1})}{h^{2}} 
+\end{bmatrix}.
+\end{equation*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Rozwiązanie układów równań różniczkowych zwyczajnych za pomocą zamkniętego schematu Eulera} 
+Wprowadzamy równomierną siatkę $\{t_k\}_{k=0}^{m} = \{k\cdot\tau\}_{k=0}^{m}$. Wykorzystamy zamknięty schemat Eulera:
+\begin{equation*}
+u_{m+1} = u_{m} + \tau \cdot f(t_{m+1}, u_{m+1})
+\end{equation*}
+z warunkiem początkowym:
+\begin{equation*}
+u_{0} = [1, \ 1, \ \dots, \ 1, \ 0]^{T},
+\end{equation*}
+gdzie $u_{m} = u(t_m) = [u(t_{m}, x_{0}), \ u(t_{m}, x_{1}), \ \dots , \ u(t_{m}, x_{n-1}) ]^{T}$, $f(t_{m}, u_{m}) = A \cdot u_m$. Po podstawieniach otrzymujemy:
+\begin{equation*}
+u_{m+1} = u_{m} + \tau \cdot A \cdot u_{m+1}.
+\end{equation*}
+Proste przekształcenia prowadzą nas do układu:
+\begin{equation*}
+(I - \tau \cdot A)u_{m+1} = u_{m},
+\end{equation*}
+który rozwiązujemy stosując algorytmy dla układów równań liniowych zoptymalizowane dla macierzy pasmowych. Otrzymany wynik został przedstawiony na wykresie \ref{mrs euler}.
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=\textwidth]{images/wykres_fdm_euler.pdf}
+	\caption{Numeryczne rozwiązanie równania \eqref{rownanie} za pomocą metody różnic skończonych oraz zamkniętego schematu Eulera dla przykładowych parametrów: $N^{*}=20$, $n=100$, $m=5000$, $\tau=0,01$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }\label{mrs euler}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Rozwiązanie układów równań różniczkowych zwyczajnych za pomocą schematu trapezów (Cranka-Nicolson)} 
+Wykorzystujemy schemat trapezów korzystając z tej samej siatki $\{t_k\}_{k=0}^{m}$ , co dla zamkniętego schematu Eulera:
+\begin{equation*}
+u_{m+1} = u_{m} + \frac{\tau}{2} ( f(t_{m+1}, u_{m+1}) + f(t_{m}, u_{m}) ),
+\end{equation*}
+\begin{equation*}
+u_{0} = [1, \ 1, \ \dots, \ 1, \ 1]^{T}.
+\end{equation*}
+Jak zostało wspomniane w rozdziale \ref{mrs dys}, ze względu na duże wahania numerycznego rozwiązania dla $u_{0} = [1, \ 1, \ \dots, \ 1, \ 0]^{T}$ w tej metodzie zakładamy, że $u_{0} = [1, \ 1, \ \dots, \ 1, \ 1]^{T}$. Dlatego jednym z parametrów tej metody jest wyrażenie $\frac{\sigma^{2}(x_{n-1})}{2 h^{2}} + \frac{b(x_{n-1})}{2 h}$.
+
+Po prostych przekształceniach otrzymujemy układ:
+\begin{equation*}
+(I - \frac{\tau}{2} \cdot A)u_{m+1} = (I + \frac{\tau}{2} \cdot A) u_{m}.
+\end{equation*}
+
+Ze względu na nieciągłość warunku początkowego, w pierwszej iteracji, tzn. dla $m=0$ do ostatniej współrzędnej wektora (I + $\frac{\tau}{2} \cdot A) u_{0}$ dodajemy wyraz $\frac{\tau}{2}(\frac{\sigma^{2}(x_{n-1})}{2 h^{2}} + \frac{b(x_{n-1})}{2 h})$ i rozwiązujemy układ równań liniowych ze zmodyfikowanym wektorem prawej strony. Otrzymany wynik został przedstawiony na wykresie \ref{mrs trapezy}.
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=\textwidth]{images/wykres_fdm_trapezy.pdf}
+	\caption{Numeryczne rozwiązanie równania \eqref{rownanie} za pomocą metody różnic skończonych oraz schematu trapezów dla przykładowych parametrów: $N^{*}=20$, $n=100$, $m=5000$, $\tau=0,01$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }\label{mrs trapezy}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Metoda elementu skończonego}
+\subsection{Dyskretyzacja przestrzeni względem zmiennej $x$}
+Zbadajmy słabe sformułowanie problemu. Niech $V$ będzie przestrzenią funkcji ciągłych na przedziale $[0,N^{*}]$, kawałkami klasy $C^{1}$, które zerują się w $N^{*}$. Szukamy funkcji $u: [0,T] \to V$, takiej że dla każdego $v \in V$ spełnione jest:
+\begin{align*}
+\int_{0}^{n^{*}} \frac{\partial}{\partial t} u(t,x) \cdot v(x) dx &= \int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x) + \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx \\
+&= \int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) \cdot v(x) dx + \int_{0}^{n^{*}} \Big( \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx,
+\end{align*}
+z warunkiem początkowym:
+\begin{equation*}
+\int_{0}^{n^{*}} u(0, x) \cdot v(x) dx = \int_{0}^{n^{*}} v(x) dx \quad \forall_{v \in V}.
+\end{equation*}
+Stosując wzór na całkowanie przez części oraz korzystając z faktów, że $\frac{\partial}{\partial x} u(t,0)=0$ oraz $v(N^{*})=0$, otrzymujemy:
+\begin{align*}
+\int_{0}^{n^{*}} \Big( \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx 
+&= 
+\int_{0}^{n^{*}} \Big( \frac{1}{2} \sigma^{2}(x)\cdot v(x)\Big) \cdot \frac{\partial^{2}}{\partial {x}^{2}} u(t,x) dx 
+= 
+\Big[ \frac{\partial}{\partial x} u(t,x) \cdot \frac{1}{2} \sigma^{2}(x) \cdot v(t) \Big] |_{0}^{n^{*}} \\& - \int_{0}^{n^{*}} \Big( \sigma(x) \cdot \sigma^{'}(x) \cdot v(x) + \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} v(x)\Big) \cdot \frac{\partial}{\partial x} u(t,x) dx 
+= \\& =
+- \int_{0}^{n^{*}} \Big( \sigma(x) \cdot \sigma^{'}(x) \cdot v(x) + \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} v(x)\Big) \cdot \frac{\partial}{\partial x} u(t,x) dx.
+\end{align*}
+Czyli ostatecznie:
+\begin{equation}\label{mes}
+\begin{aligned}
+ \frac{\partial}{\partial t} \int_{0}^{n^{*}} u(t,x) v(x) dx = \int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) v(x) dx &- \int_{0}^{n^{*}} \Big( \sigma(x) \sigma^{'}(x) v(x) + \frac{1}{2} \sigma^{2}(x)  \frac{\partial}{\partial x} v(x)\Big)\frac{\partial}{\partial x} u(t,x) dx, \\
+ \int_{0}^{n^{*}} u(0, x) v(x) dx &= \int_{0}^{n^{*}} v(x) dx.
+\end{aligned}
+\end{equation}
+
+Niech $T_{h}=\{[x_{k},x_{k+1}]\}_{k=0}^{n-1} = \{[kh,(k+1)h]\}_{k=0}^{n-1}$ oznacza równomierną triangulację odcinka $[0,N^{*}]$. Zdefiniujmy $V^h$ jako przestrzeń funkcji ciągłych, liniowych na elementach $T_{h}$, które zerują się w punkcie $N^{*}$. Oczywiście zachodzi $V^{h} \subset V$. Możemy zdefiniować dyskretyzację przestrzeni jako znalezienie funkcji $u_{h} : [0,T] \to V^{h}$, takiej że warunki \eqref{mes} zachodzą dla każdego $v \in V^{h}$ i $t \in [0,T]$.
+
+Bazą nodalną przestrzeni $V^{h}$ jest $\{\phi_i\}_{i = 0, \dots, N-1}$ gdzie:
+\begin{align*}
+\phi_{0} (x) &= \begin{cases}
+\frac{x_1 - x}{x_1} \quad &\text{dla } x \in [0, x_1], \\
+0 \quad &\text{dla pozostałych } x.
+\end{cases} \\
+\phi_i (x) &= \begin{cases}
+\frac{x - x_{i-1}}{x_i - x_{i-1}} \quad &\text{dla } x \in [x_{i-1}, x_i], \\
+\frac{x_{i+1} - x}{x_{i+1} - x_{i}} \quad &\text{dla } x \in [x_{i}, x_{i+1}], \\
+0 \quad &\text{dla pozostałych } x.
+\end{cases} \quad i > 0
+\end{align*}
+Funkcję $u_{h}$ możemy zatem zapisać jako $u_h(t) = \sum_{i = 0}^{N-1} u_i (t) \cdot \phi_{i}$. Zdefiniujmy $\bar{u}_h (t) = [u_0 (t), u_1 (t), \dots, u_{N-1} (t) ]$. Oczywiście $u_k (t) = u(t)(x_k)$. Wówczas pierwotne warunki początkowe można przekształcić na następujące warunki w terminach funkcji $\phi_i$:
+\begin{enumerate}
+	\item $u(0,x) = 1$ przekształcamy na $\bar{u}_{h,0} = \bar{u}_{h}(0) =[1,\dots,1,0]^T$, czyli dla $x \in (x_{n-1}, x_{n}]$ pierwotny warunek początkowy nie jest spełniony,
+	\item $u(t,N^{*}) = 0$ zostało zawarte w postaci funkcji $u_h$ - ostatni element bazy ma maksimum w punkcie $x_{n-1}$. Tym samym zakładamy, że w punkcie nieciągłości warunku początkowego $(0,N^{*})$ funkcja $u$ przyjmuje wartość 0,
+	\item $\frac{\partial}{\partial x} u(t, 0) = 0$ zostało wykorzystane przy przekształcaniu słabego sformułowania problemu.
+\end{enumerate}
+
+Rozważmy \eqref{mes} dla $v=\phi_k$, gdzie $k=1,\dots,n-2$ (dla pozostałych $k$ rachunki są analogiczne):
+\begin{align*}
+\frac{\partial}{\partial t} \int_{0}^{n^{*}} u(t,x) v(x) dx &= 
+\sum_{i = k-1}^{k+1} \frac{d}{d t} u_i (t) \int_{0}^{N^{*}} \phi_i (x) \phi_k (x) dx,
+\\
+\int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) v(x) dx &= \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{N^{*}} b(x) \phi_k (x)  \frac{d}{d x} \phi_i (x)  dx,
+\\
+\int_{0}^{n^{*}}\sigma(x) \sigma^{'}(x) v(x)\frac{\partial}{\partial x} u(t,x) dx &= 
+\sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{N^{*}} \sigma(x) \cdot \sigma^{'}(x) \cdot \phi_k (x) \frac{d}{d x} \phi_i (x) dx,
+\\
+\int_{0}^{n^{*}}\frac{1}{2} \sigma^{2}(x)  \frac{\partial}{\partial x} v(x)\frac{\partial}{\partial x} u(t,x) dx &= 
+\sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{N^{*}} \frac{1}{2} \sigma^{2}(x) \cdot \frac{d}{d x} \phi_k (x) \cdot \frac{d}{d x} \phi_i (x) dx.
+\end{align*}
+Oznaczając:
+\begin{equation}\label{mes macierze}
+\begin{aligned}
+A &= \big[(\phi_k, \phi_l)_{L^{2}[0,N^{*}]}\big]_{k,l = 0}^{n-1},\\
+B &= \big[\big((b(x) - \sigma(x) \sigma^{'}(x))\phi_k, \frac{d}{dx}\phi_l\big)_{L^{2}[0,N^{*}]}\big]_{k,l = 0}^{n-1},\\
+C &= \big[\big(\frac{1}{2}\sigma^{2}\frac{d}{dx} \phi_k, \frac{d}{dx}\phi_l\big)_{L^{2}[0,N^{*}]}\big]_{k,l = 0}^{n-1},
+\end{aligned}
+\end{equation}
+otrzymujemy układ:
+\begin{equation*}
+A \cdot \frac{d}{dt}\bar{u}_h (t) = (B - C) \cdot \bar{u}_h (t) = M \cdot \bar{u}_h (t).
+\end{equation*}
+
+Warto zauważyć, że macierze zdefiniowane w \eqref{mes macierze} są trójdiagonalne:
+\begin{equation*}
+A_{k,l} = \begin{cases}
+2 \quad & k=l=1,\\
+4 & k=l>1,\\
+1 & |k-l|=1,\\
+0 & |k-l| > 1.\\
+\end{cases}
+\end{equation*}
+\begin{equation*}
+h^{2}\cdot B_{k,l} = \begin{cases}
+\int_{0}^{x_1} f(x)\cdot (x - x_1)dx &k = l =1, \\
+\int_{x_{k-1}}^{x_{k}} f(x)\cdot (x-x_{k-1}) dx + \int_{x_k}^{x_{k+1}} f(x)\cdot (x - x_{k+1}) dx & k = l > 1, \\
+\int_{x_k}^{x_{k+1}} f(x)\cdot (x_{k+1} - x) dx & k + 1 = l, \\
+\int_{x_k}^{x_{k+1}} f(x)\cdot (x_k-x) dx & k - 1 = l, \\
+0 &|k-l| > 1.
+\end{cases}
+\end{equation*}
+\begin{equation*}
+h^{2} \cdot C_{k,l} = \begin{cases}
+\int_{0}^{x_1}\frac{1}{2}\sigma^{2}(x) dx  &k = l =1, \\
+\int_{x_{k-1}}^{x_{k+1}} \frac{1}{2}\sigma^{2}(x) dx & k = l > 1, \\
+-\int_{x_k}^{x_{k+1}} \frac{1}{2}\sigma^{2}(x) dx \quad & k + 1 = l, \\
+-\int_{x_k}^{x_{k+1}} \frac{1}{2}\sigma^{2}(x) dx & k - 1 = l, \\
+0 &|k-l| > 1.
+\end{cases}
+\end{equation*}
+gdzie $f(x) = (b(x) - \sigma(x) \cdot \sigma^{'}(x))$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Rozwiązanie układów równań różniczkowych zwyczajnych za pomocą zamkniętego schematu Eulera} 
+Wprowadzamy równomierną siatkę $\{t_k\}_{k=0}^{m} = \{k\cdot\tau\}_{k=0}^{m}$. Wykorzystamy zamknięty schemat Eulera:
+\begin{equation*}
+\bar{u}_{h,m+1} = \bar{u}_{h,m} + \tau \cdot f(t_{m+1}, \bar{u}_{h,m+1}),
+\end{equation*}
+z warunkiem początkowym:
+\begin{equation*}
+\bar{u}_{h,0} = [1, \ 1, \ \dots, \ 1, \ 0]^{T},
+\end{equation*}
+gdzie $\bar{u}_{h,m} = \bar{u}_{h}(t_m) = [u_{0}(t_{m}),  \ \dots , \ u_{n-1}(t_{m}) ]^{T}$, $f(t_{m}, \bar{u}_{h,m}) = A^{-1} M \cdot \bar{u}_{h,m}$. Po podstawieniach otrzymujemy:
+\begin{equation*}
+\bar{u}_{h,m+1} = \bar{u}_{h,m} + \tau \cdot A^{-1} M \cdot \bar{u}_{h,m+1}(t).
+\end{equation*}
+Proste przekształcenia prowadzą nas do równania:
+\begin{equation*}
+(A - \tau \cdot M)\bar{u}_{h,m+1} = A \bar{u}_{h,m},
+\end{equation*}
+które rozwiązujemy za pomocą algorytmu dla układów równań liniowych. Otrzymany wynik został przedstawiony na wykresie \ref{mes euler}.
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=\textwidth]{images/wykres_fem_euler.pdf}
+	\caption{Numeryczne rozwiązanie równania \eqref{rownanie} za pomocą metody elementu skończonego oraz zamkniętego schematu Eulera dla przykładowych parametrów: $N^{*}=20$, $n=100$, $m=5000$, $\tau=0,01$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }\label{mes euler}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Rozwiązanie układów równań różniczkowych zwyczajnych za pomocą schematu trapezów (Cranka-Nicolson)} 
+Wykorzystujemy schemat trapezów dla tej samej siatki $\{t_k\}_{k=0}^{m} = \{k\cdot\tau\}_{k=0}^{m}$ ,co w przypadku zamkniętego schematu Eulera:
+\begin{equation*}
+\bar{u}_{h,m+1} = \bar{u}_{h,m} + \frac{\tau}{2} ( f(t_{m+1}, \bar{u}_{h,m+1}) + f(t_{m}, \bar{u}_{h,m}) ),
+\end{equation*}
+\begin{equation*}
+\bar{u}_{h,0} = [1, \ 1, \ \dots, \ 1, \ 0]^{T}.
+\end{equation*}
+Po podstawieniu i przekształceniu otrzymujemy:
+\begin{equation*}
+(A - \frac{\tau}{2} \cdot M)\bar{u}_{h,m+1} = (A + \frac{\tau}{2} \cdot M) \bar{u}_{h,m}.
+\end{equation*}
+Otrzymany wynik został przedstawiony na wykresie \ref{mes trapezy}.
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=\textwidth]{images/wykres_fem_trapezy.pdf}
+	\caption{Numeryczne rozwiązanie równania \eqref{rownanie} za pomocą metody elementu skończonego oraz schematu trapezów dla przykładowych parametrów: $N^{*}=20$, $n=100$, $m=5000$, $\tau=0,01$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }\label{mes trapezy}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Porównanie metod i uzyskana dokładność}
+
+Nie znamy dokładnego rozwiązania równania \eqref{rownanie}, natomiast w pracy \textit{A stochastic model for cell adhesion to the vascular wall} zaprezentowane jest równanie na całkę z funkcji $u$:
+\begin{equation*}
+U (x) = \int_{0}^{+ \infty } u(t,x) dt = 2 \int_{x}^{N^{*}} \frac{1}{\Psi (y)} \int_{0}^{y} \frac{\Psi (z)}{\sigma^{2} (z)} dz dy,
+\end{equation*}
+gdzie
+\begin{equation*}
+\Psi (y) = e^{\int_{0}^{y} \frac{2 b(t)}{\sigma^{2} (t)} dt}.
+\end{equation*}
+Równanie to nie jest dobrze określone dla $x=0$.
+
+Aby zbadać poprawność uzyskanych wyników, obliczymy numerycznie z bardzo dużą dokładnością wartość funkcji $U$ dla argumentów $\{x_k\}_{k=1}^{n-1}$. Następnie dla każdej z czterech metod dla ustalonego kroku przestrzennego $h$ i kroku czasowego $\tau$ będziemy numerycznie całkować funkcję $u$ po zmiennej $t$, aż do momentu $T=M\cdot\tau$, w którym aproksymacje wartości funkcji $u$ w każdym z punktów $(T, x_k)$ będą mniejsze od zadanej tolerancji. Niech $\bar{u}(\tau,h)$ będzie wektorem zawierającym wyznaczone w ten sposób wartości całki dla $x_{1},\dots,x_{n-1}$. Zbadamy różnicę funkcji $U$ i $\bar{u}(\tau,h)$ w normie $||f||_{h} = h\cdot \sum_{k=1}^{n-1}|f(x_k)|$, która aproksymuję normę $L^{1}([0,N^{*}])$. Porównamy obliczony błąd dla różnych kroków przestrzennych $h\in\{1/20, 1/40, 1/80,1/160, 1/320\}$ oraz różnych kroków czasowych $\tau\in\{1/20, 1/40, 1/80,1/160, 1/320\}$.
+
+Zdefiniujmy $e(\tau,h)=||U-\bar{u}(\tau,h)||_{h}$.
+\subsection{Metoda różnic skończonych i zamknięty schemat Eulera}
+W metodzie różnic skończonych warunki początkowe skutkują niezerowaniem się funkcji $u$ dla $x$ bliskich 0, nawet po bardzo długim czasie. Ze względu na ten fakt, będziemy badać błąd w normie $||\cdot||_{h}$ zdefiniowanej powyżej oraz w normie $|||f|||_{h} = h\cdot \sum_{k=K}^{n-1}|f(x_k)|$, gdzie $1/2 = K\cdot h$, która przybliża normę $L^{1}([1/2,N^{*}])$ (w omawianych przykładach $N^{*}=20$). Analogicznie do $e$ zdefiniujmy $\bar{e}(\tau,h)=|||U-\bar{u}(\tau,h)|||_{h}$.
+\subsubsection{Cały przedział [0, $N^{*}$]}
+		Badając błąd na całym przedziale $[0,N^{*}]$ otrzymujemy duże wartości. Ponadto dla ustalonego kroku przestrzeni $h$ nie widać istotnego wpływu zmiany kroku czasowego $\tau$, szczególnie dla większych wartości $h$. Z kole zależność błędu od długości kroku przestrzeni $h$ jest w przybliżeniu liniowa.
+		\begin{figure}[h!]
+			\caption{Wartość funkcji $e(\tau,h)$ dla różnych kroków przestrzennych i czasowych dla metody różnic skończonych oraz zamkniętego schematu Eulera. Użyte parametry: $N^{*}=20$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }
+			\centering
+			\includegraphics[width=0.5\textwidth]{images/blad_fdm_euler.pdf}
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				&    $\tau=1/20$ &    $\tau=1/40$ &    $\tau=1/80$ &   $\tau=1/160$ &   $\tau=1/320$ \\
+				\hline 
+				$h=1/20$  &  2,600060 &	2,587273 &	2,580879 &	2,577663 &	2,576065 \\
+				\hline
+				$h=1/40$  &  1,319991 &	1,307345 &	1,301003 &	1,297851 &	1,296265 \\
+				\hline
+				$h=1/80$  &  0,673860 &	0,661305 &	0,655009 &	0,651860 &	0,650289 \\
+				\hline
+				$h=1/160$ &  0,349686 &	0,337149 &	0,330886 &	0,327749 &	0,326182 \\
+				\hline
+				$h=1/320$ &  0,187295 &	0,174776 &	0,168514 &	0,165384 &	0,163819 \\
+				\hline
+			\end{tabular}
+		\end{figure}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku przestrzennego dla metody różnic skończonych i zamkniętego schematu Eulera na przedziale $[0,N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{e(1/20,2h)}{e(1/20,h)}$ &  $\frac{e(1/40,2h)}{e(1/40,h)}$ &  $\frac{e(1/80,2h)}{e(1/80,h)}$ &  $\frac{e(1/160,2h)}{e(1/160,h)}$ &  $\frac{e(1/320,2h)}{e(1/320,h)}$ \\
+				\hline
+				$h=1/40$  &  1,969756 &	1,979029 &	1,983762 &	1,986102 &	1,987298 \\
+				\hline
+				$h=1/80$  &1,958852 &	1,976916 &	1,986237 &	1,990995 &	1,993369 \\
+				\hline
+				$h=1/160$ &1,927041 &	1,961461 &	1,979562 &	1,988902 &	1,993639 \\
+				\hline
+				$h=1/320$ & 1,867038 &	1,929035 &	1,963545 &	1,981750 &	1,991114 \\
+				\hline
+			\end{tabular}
+		\end{table}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku czasowego dla metody różnic skończonych i zamkniętego schematu Eulera na przedziale $[0,N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{{e}(2\tau,1/20)}{e(\tau,1/20)}$ &  $\frac{e(2\tau,1/40)}{e(\tau,1/40)}$ &  $\frac{e(2\tau,1/80)}{e(\tau,1/80)}$ &  $\frac{e(2\tau,1/160)}{e(\tau,1/160)}$ &  $\frac{e(2\tau,1/320)}{e(\tau,1/320)}$ \\
+				\hline
+				$\tau=1/40$ & 1,004942 	&1,009673 &	1,018984 &	1,037185 &	1,071626 \\
+				\hline
+				$\tau=1/80$  &1,002477 	&1,004875 &	1,009613 &	1,018930 &	1,037158 \\
+				\hline
+				$\tau=1/160$ & 1,001247 &	1,002429 &	1,004830 &	1,009570 &	1,018931 \\
+				\hline
+				$\tau=1/320$ & 1,000620 &	1,001223 &	1,002417 &	1,004804 &	1,009552 \\
+				\hline
+			\end{tabular}
+		\end{table}
+		
+		
+		\subsubsection{Przedział [$0,5$, $N^{*}$]}
+		Po ograniczeniu się do przedziału $[0,5, N^{*}]$, otrzymane wartości błędu zmalały o dwa rzędy wielkości. Ponadto zmieniła się zależność błędu od wielkości $h$ i $\tau$: zmiana kroku przestrzennego nie wpływa znacząco na wartość błędu, natomiast błąd maleje liniowo dla malejącego liniowo kroku czasowego.
+		\begin{figure}[h!]
+			\caption{Wartość funkcji $\bar{e}(\tau,h)$ dla różnych kroków przestrzennych i czasowych dla metody różnic skończonych oraz zamkniętego schematu Eulera. Użyte parametry: $N^{*}=20$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }
+			\centering
+			\includegraphics[width=0.5\textwidth]{images/blad_fdm_euler_krotki.pdf}
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				&    $\tau=1/20$ &    $\tau=1/40$ &    $\tau=1/80$ &   $\tau=1/160$ &   $\tau=1/320$ \\
+				\hline 
+				$h=1/20$  &  0,025889 &	0,013390 &	0,007140 &	0,004014 &	0,002452 \\
+				\hline
+				$h=1/40$  &  0,024963 &	0,012463 &	0,006213 &	0,003088 &	0,001525 \\
+				\hline
+				$h=1/80$  &  0,024751 &	0,012251 &	0,006001 &	0,002876 &	0,001313 \\
+				\hline
+				$h=1/160$ &  0,024696 &	0,012196 &	0,005946 &	0,002821 &	0,001258 \\
+				\hline
+				$h=1/320$ &  0,024696 &	0,012196 &	0,005946 &	0,002821 &	0,001258 \\
+				\hline
+			\end{tabular}
+		\end{figure}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku przestrzennego dla metody różnic skończonych i zamkniętego schematu Eulera na przedziale $[0,5, N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{\bar{e}(1/20,2h)}{\bar{e}(1/20,h)}$ &  $\frac{\bar{e}(1/40,2h)}{\bar{e}(1/40,h)}$ &  $\frac{\bar{e}(1/80,2h)}{\bar{e}(1/80,h)}$ &  $\frac{\bar{e}(1/160,2h)}{\bar{e}(1/160,h)}$ &  $\frac{\bar{e}(1/320,2h)}{\bar{e}(1/320,h)}$ \\
+				\hline
+				$h=1/40$  &  1,037130 &	1,074369 &	1,149191 &	1,300168 &	1,607692 \\
+				\hline
+				$h=1/80$  &1,008561 &	1,017288 &	1,035294 &	1,073664 &	1,161294 \\
+				\hline
+				$h=1/160$ &1,002237 &	1,004537 &	1,009290 &	1,019583 &	1,043903 \\
+				\hline
+				$h=1/320$ &1,000603 &	1,001222 &	1,002527 &	1,005341 &	1,012055 \\
+				\hline
+			\end{tabular}
+		\end{table}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku czasowego dla metody różnic skończonych i zamkniętego schematu Eulera na przedziale $[0,5, N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{\bar{e}(2\tau,1/20)}{\bar{e}(\tau,1/20)}$ &  $\frac{\bar{e}(2\tau,1/40)}{\bar{e}(\tau,1/40)}$ &  $\frac{\bar{e}(2\tau,1/80)}{\bar{e}(\tau,1/80)}$ &  $\frac{\bar{e}(2\tau,1/160)}{\bar{e}(\tau,1/160)}$ &  $\frac{\bar{e}(2\tau,1/320)}{\bar{e}(\tau,1/320)}$ \\
+				\hline
+				$\tau=1/40$ & 1,933566 	&2,002993 &	2,020324 &	2,024962 &	2,026214 \\
+				\hline
+				$\tau=1/80$  &1,875409 &2,006019 &	2,041526 &	2,051185 &	2,053858 \\
+				\hline
+				$\tau=1/160$ & 1,778435 &	2,012079 &	2,086650 &	2,107929 &	2,113846 \\
+				\hline
+				$\tau=1/320$ & 1,637236 &	2,024486 &	2,189720 &	2,241952 &	2,256924 \\
+				\hline
+			\end{tabular}
+		\end{table}
+\newpage		
+\subsection{Metoda różnic skończonych i schemat trapezów}
+		\subsubsection{Cały przedział [0, $N^{*}$]}
+		Analogicznie, jak w przypadku zamkniętego schematu Eulera, błędy liczone dla całego przedziału są bardzo duże. Ponadto obserwujemy wzrost błędu, gdy krok czasowy jest istotnie większy od kroku przestrzennego. Z naszych obserwacji wynika, że w tym przypadku błąd zależy liniowo od długości kroku przestrzennego, natomiast długość kroku czasowego ma niewielki wpływ na jego wartość.
+		\begin{figure}[h!]
+			\caption{Wartość funkcji $e(\tau,h)$ dla różnych kroków przestrzennych i czasowych dla metody różnic skończonych oraz schematu trapezów. Użyte parametry: $N^{*}=20$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }
+			\centering
+			\includegraphics[width=0.5\textwidth]{images/blad_fdm_trapezy.pdf}
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				&    $\tau=1/20$ &    $\tau=1/40$ &    $\tau=1/80$ &   $\tau=1/160$ &   $\tau=1/320$ \\
+				\hline 
+				$h=1/20$  &  2,622955 &	2,598916 &	2,586760 &	2,580622 &	2,577550 \\
+				\hline
+				$h=1/40$  & 1,343405 &	1,319248 &	1,307033 &	1,300875 &	1,297783 \\
+				\hline
+				$h=1/80$  &  1,041927 &	0,673340 &	0,661085 &	0,654917 &	0,651823 \\
+				\hline
+				$h=1/160$ &  2,133864 &	0,521642 &	0,336995 &	0,330822 &	0,327724 \\
+				\hline
+				$h=1/320$ &  4,269604 &	1,067685 &	0,261004 &	0,168466 &	0,165366 \\
+				\hline
+			\end{tabular}
+		\end{figure}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku przestrzennego dla metody różnic skończonych i schematu trapezów na przedziale $[0,N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{e(1/20,2h)}{e(1/20,h)}$ &  $\frac{e(1/40,2h)}{e(1/40,h)}$ &  $\frac{e(1/80,2h)}{e(1/80,h)}$ &  $\frac{e(1/160,2h)}{e(1/160,h)}$ &  $\frac{e(1/320,2h)}{e(1/320,h)}$ \\
+				\hline
+				$h=1/40$  &  1,952468 &	1,969998 &	1,979109 &	1,983760 &	1,986118 \\
+				\hline
+				$h=1/80$  &1,289346 &	1,959261 &	1,977101 &	1,986319 &	1,991005 \\
+				\hline
+				$h=1/160$ &0,488282 &	1,290807 &	1,961705 &	1,979665 &	1,988937\\
+				\hline
+				$h=1/320$ &0,499780 &	0,488574 &	1,291149 &	1,963729 &	1,981812 \\
+				\hline
+			\end{tabular}
+		\end{table}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku czasowego dla metody różnic skończonych i schematu trapezów na przedziale $[0,N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{{e}(2\tau,1/20)}{e(\tau,1/20)}$ &  $\frac{e(2\tau,1/40)}{e(\tau,1/40)}$ &  $\frac{e(2\tau,1/80)}{e(\tau,1/80)}$ &  $\frac{e(2\tau,1/160)}{e(\tau,1/160)}$ &  $\frac{e(2\tau,1/320)}{e(\tau,1/320)}$ \\
+				\hline
+				$\tau=1/40$ & 1,009250 & 1,018311 &	1,547403 &	4,090665 &	3,998937 \\
+				\hline
+				$\tau=1/80$  &1,004699 & 1,009346 &	1,018537 &	1,547922 &	4,090678 \\
+				\hline
+				$\tau=1/160$ &1,002378 & 1,004734 &	1,009418 &	1,018660 &	1,549297 \\
+				\hline
+				$\tau=1/320$ &1,001192 & 1,002382 &	1,004747 &	1,009453 &	1,018749 \\
+				\hline
+			\end{tabular}
+		\end{table}
+		
+		\subsubsection{Przedział [$0,5$, $N^{*}$]}
+		Podobnie, jak dla zamkniętego schematu Eulera, po obcięciu badanego przedziału błąd zmniejsza się o dwa rzędy wielkości i zmienia się istotność kroków $h$ i $\tau$ na jego wartość.
+		\begin{figure}[h!]
+			\caption{Wartość funkcji $\bar{e}(\tau,h)$ dla różnych kroków przestrzennych i czasowych dla metody różnic skończonych oraz schematu trapezów. Użyte parametry: $N^{*}=20$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }
+			\centering
+			\includegraphics[width=0.5\textwidth]{images/blad_fdm_trapezy_krotki.pdf}
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				&    $\tau=1/20$ &    $\tau=1/40$ &    $\tau=1/80$ &   $\tau=1/160$ &   $\tau=1/320$ \\
+				\hline 
+				$h=1/20$  &  0,049834 &	0,025563 &	0,013287 &	0,007107 &	0,004004 \\
+				\hline
+				$h=1/40$  &  0,048893 &	0,024629 &	0,012357 &	0,006178 &	0,003077 \\
+				\hline
+				$h=1/80$  &  0,048988 &	0,024413 &	0,012143 &	0,005966 &	0,002864 \\
+				\hline
+				$h=1/160$ &  0,048936 &	0,024676 &	0,012087 &	0,005910 &	0,002809 \\
+				\hline
+				$h=1/320$ &  0,048922 &	0,024664 &	0,012394 &	0,005895 &	0,002794 \\
+				\hline
+			\end{tabular}
+		\end{figure}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku przestrzennego dla metody różnic skończonych i schematu trapezów na przedziale $[0,5, N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{\bar{e}(1/20,2h)}{\bar{e}(1/20,h)}$ &  $\frac{\bar{e}(1/40,2h)}{\bar{e}(1/40,h)}$ &  $\frac{\bar{e}(1/80,2h)}{\bar{e}(1/80,h)}$ &  $\frac{\bar{e}(1/160,2h)}{\bar{e}(1/160,h)}$ &  $\frac{\bar{e}(1/320,2h)}{\bar{e}(1/320,h)}$ \\
+				\hline
+				$h=1/40$  &  1,019248 &	1,037926 &	1,075298 &	1,150293 &	1,301534 \\
+				\hline
+				$h=1/80$  &0,998052 &	1,008827 &	1,017600 &	1,035666 &	1,074118 \\
+				\hline
+				$h=1/160$ &1,001070 &	0,989356 &	1,004648 &	1,009427 &	1,019750 \\
+				\hline
+				$h=1/320$ &1,000292 &	1,000496 &	0,975242 &	1,002579 &	1,005403 \\
+				\hline
+			\end{tabular}
+		\end{table}
+		\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku czasowego dla metody różnic skończonych i schematu trapezów na przedziale $[0,5, N^{*}]$.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{\bar{e}(2\tau,1/20)}{\bar{e}(\tau,1/20)}$ &  $\frac{\bar{e}(2\tau,1/40)}{\bar{e}(\tau,1/40)}$ &  $\frac{\bar{e}(2\tau,1/80)}{\bar{e}(\tau,1/80)}$ &  $\frac{\bar{e}(2\tau,1/160)}{\bar{e}(\tau,1/160)}$ &  $\frac{\bar{e}(2\tau,1/320)}{\bar{e}(\tau,1/320)}$ \\
+				\hline
+				$\tau=1/40$ & 1,949466 &	1,985191 &	2,006623 &	1,983143 &	1,983547 \\
+				\hline
+				$\tau=1/80$  &1,923878 &	1,993150 &	2,010482 &	2,041557 &	1,990027 \\
+				\hline
+				$\tau=1/160$ & 1,869562 &	1,999952 &	2,035460 &	2,045141 &	2,102467 \\
+				\hline
+				$\tau=1/320$ & 1,774904 &	2,008268 &	2,082830 &	2,104130 &	2,110057 \\
+				\hline
+			\end{tabular}
+		\end{table}
+\newpage	
+\subsection{Metoda elementu skończonego i zamknięty schemat Eulera}
+	W metodzie elementu skończonego nie występują żadne zaburzenia w pobliżu $x=0$, dlatego będziemy badać jedynie błąd na całym przedziale. Na podstawie obserwacji uzyskanych dla zamkniętego schematu Eulera można stwierdzić, że zależność wartości błędu przybliżenia od długości kroku czasowego jest w przybliżeniu liniowa, natomiast zmiana kroku przestrzennego jest w większości przypadków nieistotna. Zauważmy, że otrzymane wartości błędów są porównywalne z błędami otrzymanymi z wykorzystaniem metody różnic skończonych dla obciętych przedziałów.
+	\begin{figure}[h!]
+		\caption{Wartość funkcji $e(\tau,h)$ dla różnych kroków przestrzennych i czasowych dla metody elementu skończonego oraz zamkniętego schematu Eulera. Użyte parametry: $N^{*}=20$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }
+		\centering
+		\includegraphics[width=0.5\textwidth]{images/blad_fem_euler.pdf}
+		\begin{tabular}{|c|c|c|c|c|c|}
+			\hline
+			&    $\tau=1/20$ &    $\tau=1/40$ &    $\tau=1/80$ &   $\tau=1/160$ &   $\tau=1/320$ \\
+			\hline 
+			$h=1/20$  &  0,029099 &  0,016599 &  0,010349 &  0,007224 &  0,005662 \\
+			\hline
+			$h=1/40$  &  0,025759 &  0,013259 &  0,007009 &  0,003884 &  0,002321 \\
+			\hline
+			$h=1/80$  &  0,024924 &  0,012424 &  0,006174 &  0,003049 &  0,001487 \\
+			\hline
+			$h=1/160$ &  0,024715 &  0,012215 &  0,005965 &  0,002840 &  0,001278 \\
+			\hline
+			$h=1/320$ &  0,024663 &  0,012163 &  0,005913 &  0,002788 &  0,001226 \\
+			\hline
+		\end{tabular}
+	\end{figure}
+	\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku przestrzennego dla metody elementu skończonego i zamkniętego schematu Eulera.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{e(1/20,2h)}{e(1/20,h)}$ &  $\frac{e(1/40,2h)}{e(1/40,h)}$ &  $\frac{e(1/80,2h)}{e(1/80,h)}$ &  $\frac{e(1/160,2h)}{e(1/160,h)}$ &  $\frac{e(1/320,2h)}{e(1/320,h)}$ \\
+				\hline
+				$h=1/40$  &  1,129668 &  1,251931 &  1,476574 & 1,860013 &  2,438879 \\
+				\hline
+				$h=1/80$  &1,033504 & 1,067205 & 1,135238 &  1,273845 &  1,561676 \\
+				\hline
+				$h=1/160$ & 1,008445 &1,017086 & 1,034985 & 1,073490 & 1,163372 \\
+				\hline
+				$h=1/320$ & 1,002114 & 1,004288 & 1,008833 & 1,018723 &  1,042533 \\
+				\hline
+			\end{tabular}
+	\end{table}
+	\begin{table}[h!]
+			\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku czasowego dla metody elementu skończonego i zamkniętego schematu Eulera.}
+			\centering
+			\begin{tabular}{|c|c|c|c|c|c|}
+				\hline
+				& $\frac{e(2\tau,1/20)}{e(\tau,1/20)}$ &  $\frac{e(2\tau,1/40)}{e(\tau,1/40)}$ &  $\frac{e(2\tau,1/80)}{e(\tau,1/80)}$ &  $\frac{e(2\tau,1/160)}{e(\tau,1/160)}$ &  $\frac{e(2\tau,1/320)}{e(\tau,1/320)}$ \\
+				\hline
+				$\tau=1/40$ & 1,753036 &1,942766 & 2,006116 &  2,023306 & 2,027697 \\
+				\hline
+				$\tau=1/80$  &1,603913 & 1,891714 & 2,012308 &  2,047721 &  2,056988 \\
+				\hline
+				$\tau=1/160$ & 1,432575 & 1,804589 &  2,024921 & 2,100255 & 2,120845 \\
+				\hline
+				$\tau=1/320$ & 1,275972 &1,673075 & 2,051113 & 2,222849 &2,274802 \\
+				\hline
+	\end{tabular}
+\end{table}
+\newpage		
+\subsection{Metoda elementu skończonego i schemat trapezów}
+Błędy uzyskane po zastosowaniu metody elementu skończonego oraz schematu trapezów są istotnie mniejsze od błędów uzyskanych metody elementu skończonego oraz schematu Eulera. Krok czasowy prawie nie ma wpływu na wartość błędu. Na podstawie przeprowadzonych obserwacji nie jesteśmy w stanie określić prostym wzorem zależności błędu od długości kroku przestrzennego. Możemy zaobserwować, że najlepsze efekty uzyskujemy, gdy krok przestrzenny jest wyraźnie mniejszy od kroku czasowego.
+\begin{figure}[h!]
+	\caption{Wartość funkcji $e(\tau,h)$ dla różnych kroków przestrzennych i czasowych dla metody elementu skończonego oraz schematu trapezów. Użyte parametry: $N^{*}=20$, $a=0,55$, $c=5$, $d=4$, $r=5$, $\alpha=0,1$, $\beta=6$, $\gamma=0,3$. }
+	\centering
+	\includegraphics[width=0.5\textwidth]{images/blad_fem_trapezy.pdf}
+	\begin{tabular}{|c|c|c|c|c|c|}
+		\hline
+		&    $\tau=1/20$ &    $\tau=1/40$ &    $\tau=1/80$ &   $\tau=1/160$ &   $\tau=1/320$ \\
+		\hline 
+		$h=1/20$  &  0,004188 &	0,004188 &	0,004188 &	0,004188 &	0,004188 \\
+		\hline
+		$h=1/40$  &  0,000785 &	0,000785 &	0,000785 &	0,000785 &	0,000785 \\
+		\hline
+		$h=1/80$  &  0,000284 &	0,000076 &	0,000076 &	0,000076 &	0,000076 \\
+		\hline
+		$h=1/160$ &  0,000071 &	0,000071 &	0,000285 &	0,000285 &	0,000285 \\
+		\hline
+		$h=1/320$ &  0,000018 &	0,000018 &	0,000018 &	0,000337 &	0,000337 \\
+		\hline
+	\end{tabular}
+\end{figure}
+\begin{table}[h!]
+	\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku przestrzennego dla metody elementu skończonego i schematu trapezów.}
+	\centering
+	\begin{tabular}{|c|c|c|c|c|c|}
+		\hline
+		& $\frac{e(1/20,2h)}{e(1/20,h)}$ &  $\frac{e(1/40,2h)}{e(1/40,h)}$ &  $\frac{e(1/80,2h)}{e(1/80,h)}$ &  $\frac{e(1/160,2h)}{e(1/160,h)}$ &  $\frac{e(1/320,2h)}{e(1/320,h)}$ \\
+		\hline
+		$h=1/40$  &  5,332660 &	5,333258 &	5,333188 &	5,333189 &	5,333263 \\
+		\hline
+		$h=1/80$  &2,769211 &	10,334773 &	10,334776 &	10,334750 &	10,334599 \\
+		\hline
+		$h=1/160$ & 4,001070 &	1,071945 &	0,266901 &	0,266901 &	0,266888 \\
+		\hline
+		$h=1/320$ & 4,004644 &	4,004675 &	16,083783 &	0,845036 &	0,845076 \\
+		\hline
+	\end{tabular}
+\end{table}
+\begin{table}[h!]
+	\caption{Zmiana błędu przybliżenia po dwukrotnym zmniejszeniu kroku czasowego dla metody elementu skończonego i schematu trapezów.}
+	\centering
+	\begin{tabular}{|c|c|c|c|c|c|}
+		\hline
+		& $\frac{e(2\tau,1/20)}{e(\tau,1/20)}$ &  $\frac{e(2\tau,1/40)}{e(\tau,1/40)}$ &  $\frac{e(2\tau,1/80)}{e(\tau,1/80)}$ &  $\frac{e(2\tau,1/160)}{e(\tau,1/160)}$ &  $\frac{e(2\tau,1/320)}{e(\tau,1/320)}$ \\
+		\hline
+		$\tau=1/40$ & 1,000026 &	1,000138 &	3,732544 &	1,000003 &	1,000011 \\
+		\hline
+		$\tau=1/80$  & 1,000013 &	1,000000 &	1,000000 &	0,248988 &	0,999997 \\
+		\hline
+		$\tau=1/160$ & 1,000000 &	1,000000 &	0,999998 &	1,000000 &	0,052540 \\
+		\hline
+		$\tau=1/320$ & 1,000003 &	1,000017 &	1,000003 &	0,999952 &	1,000000 \\
+		\hline
+	\end{tabular}
+\end{table}
+
+\newpage
+\section{Dyskusja}
+Najlepsze wyniki uzyskaliśmy dla połączenia metody elementu skończonego ze schematem trapezów dla kroku przestrzennego istotnie mniejszego niż krok czasowy. Ogólnie algorytmy oparte na metodzie elementu skończonego dużo lepiej przybliżają funkcję $u$ niż te oparte na metodzie różnic skończonych. Ponadto można je wykorzystać do aproksymacji na całym przedziale $[0, N^{8}]$, w przeciwieństwie do algorytmów opartych na metodzie różnic skończonych, które dają złe wyniki dla $x$ bliskich 0.
+ 
+Rozważmy przyczyny takich różnic. Część błędów wynika z problematycznych warunków początkowych. Przede wszystkim wartości brzegowe są nieciągłe, co powoduje zaburzenia, szczególnie w metodzie różnic skończonych. Aby uniknąć sytuacji, w której rozwiązanie numeryczne zdecydowanie odbiega od spodziewanej wartości funkcji, musieliśmy zmienić warunek początkowy w okolicy punktu nieciągłości.
+
+Poza tym dany warunek początkowy ma mieszany charakter. Z tego powodu nie jest tak prosty do uwzględnienia, szczególnie w metodzie elementu skończonego.
+\end{document}
+
+%wcześniejsza wersja macierzy dla fdm
+%\begin{equation*}
+%\begin{bmatrix}
+%	0 & 0 & 0 & 0 & \cdots & 0 & 0 & 0
+%	\\
+%	\frac{\sigma^{2}(h)}{2 h^{2}} - \frac{b(h)}{2 h} & -\frac{\sigma^{2}(h)}{h^{2}} & \frac{\sigma^{2}(h)}{2 h^{2}} + \frac{b(h)}{2 h} & 0 & \cdots & 0 & 0 & 0
+%	\\
+%	0 & \frac{\sigma^{2}(2 h)}{2 h^{2}} - \frac{b(2 h)}{2 h} & -\frac{\sigma^{2}(2 h)}{h^{2}} & \frac{\sigma^{2}(2 h)}{2 h^{2}} + \frac{b(2 h)}{2 h} & \cdots & 0 & 0 & 0
+%	\\
+%	&  &  &  & \ddots &  &  & 
+%	\\
+%	0 & 0 & 0 & 0 & \cdots & \frac{\sigma^{2}((N-1)h)}{2 h^{2}} - \frac{b((N-1)h)}{2 h} & -\frac{\sigma^{2}((N-1)h)}{h^{2}} & \frac{\sigma^{2}((N-1)h)}{2 h^{2}} + \frac{b((N-1)h)}{2 h}
+%	\\
+%	0 & 0 & 0 & 0 & \cdots & 0 & 0 & 0
+%\end{bmatrix}
+%\end{equation*}
+
+%Chcemy doprowadzić do sytuacji, w której 
+%\begin{equation*}
+%\frac{\partial}{\partial t} (u, v)_{L^2} = \dots
+%\end{equation*}
+
+%\begin{align*}
+%\frac{\partial}{\partial t} \int_{0}^{n^{*}} u_h(t,x) \cdot v(x) dx = 
+%\frac{\partial}{\partial t} \int_{0}^{n^{*}} \sum_{i = 0}^{N-1} u_i (t) \cdot phi_k(x) dx =  \sum_{i = k-1}^{k+1} \frac{\partial}{\partial t} u_i (t) \int_{0}^{n^{*}} \phi_i (x) \cdot \phi_k (x) dx 
+%\\ a \\
+%\int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) \cdot v(x) dx = \int_{0}^{n^{*}} \Big( b(x) \cdot \sum_{i = 0}^{N-1} (u_i (t) \frac{\partial}{\partial x} \phi_i (x))\Big) \cdot \phi_k (x) dx = 
+%\sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{n^{*}} \Big( b(x) \cdot  \frac{\partial}{\partial x} \phi_i (x)\Big) \cdot \phi_k (x) dx
+%\\ a \\
+%- \int_{0}^{n^{*}} \Big( \sigma(x) \cdot \sigma^{'}(x) \cdot v(x) + \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} v(x)\Big) \cdot \frac{\partial}{\partial x} u(t,x) dx, 
+%\\ a \\ a \\
+%\int_{0}^{n^{*}} u(0, x) \cdot v(x) dx = \int_{0}^{n^{*}} v(x) dx.
+%\end{align*}
+
+\begin{align*}
+\sum_{i = k-1}^{k+1} \frac{\partial}{\partial t} u_i (t) \int_{0}^{n^{*}} \phi_i (x) \cdot \phi_k (x) dx = \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{n^{*}} b(x)\cdot \phi_k (x) \cdot  \frac{\partial}{\partial x} \phi_i (x)  dx
+\\ 
+- \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{n^{*}} \sigma(x) \cdot \sigma^{'}(x) \cdot \phi_k (x) \frac{\partial}{\partial x} \phi_i (x) dx 
+-  \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{n^{*}} \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} \phi_k (x) \cdot \frac{\partial}{\partial x} \phi_i (x) dx  = 
+\\
+= \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{n^{*}} \Big(b(x) - \sigma(x) \cdot \sigma^{'}(x)\Big)\cdot \phi_k (x) \cdot  \frac{\partial}{\partial x} \phi_i (x)  dx 
+-  \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{n^{*}} \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} \phi_k (x) \cdot \frac{\partial}{\partial x} \phi_i (x) dx.
+\end{align*}
