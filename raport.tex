@@ -23,7 +23,7 @@ b(x) &= c + (r - d\cdot e^{\alpha(\beta - \gamma \cdot x)})\cdot x, \\
 \end{align*}
 z warunkami początkowymi:
 \begin{align*}
-u(0, x) &= \mathbbm{1}_{\lbrack 0, n^{*} \rbrack } (x) = 1, \\
+u(0, x) &= \mathbbm{1}_{\lbrack 0, N^{*} \rbrack } (x) = 1, \\
 u(t, N^{*}) &= 0, \\
 \frac{\partial}{\partial x} u(t, 0) &= 0. 
 \end{align*}
@@ -49,7 +49,7 @@ Przybliżamy pochodne \(\frac{\partial}{\partial x} u(t, x)\) oraz \(\frac{\part
 \end{aligned}
 \end{equation}
 
-Na przedziale $[0, n^{*}]$ wprowadzamy równomierną siatkę $\{x_k\}_{k=0}^{n} = \{k\cdot h\}_{k=0}^{n}$, gdzie $n\cdot h = N^{*}$. Dla $k=1,\dots,n-1$ równania \eqref{mrs x} przyjmują postać:
+Na przedziale $[0, N^{*}]$ wprowadzamy równomierną siatkę $\{x_k\}_{k=0}^{n} = \{k\cdot h\}_{k=0}^{n}$, gdzie $n\cdot h = N^{*}$. Dla $k=1,\dots,n-1$ równania \eqref{mrs x} przyjmują postać:
 \begin{equation*}
 \begin{aligned}
 \frac{\partial}{\partial x} u(t, x_{k}) &\approx \frac{u(t, x_{k+1}) - u(t, x_{k-1})}{2 h}, \\
@@ -175,28 +175,28 @@ Ze względu na nieciągłość warunku początkowego, w pierwszej iteracji, tzn.
 \subsection{Dyskretyzacja przestrzeni względem zmiennej $x$}
 Zbadajmy słabe sformułowanie problemu. Niech $V$ będzie przestrzenią funkcji ciągłych na przedziale $[0,N^{*}]$, kawałkami klasy $C^{1}$, które zerują się w $N^{*}$. Szukamy funkcji $u: [0,T] \to V$, takiej że dla każdego $v \in V$ spełnione jest:
 \begin{align*}
-\int_{0}^{n^{*}} \frac{\partial}{\partial t} u(t,x) \cdot v(x) dx &= \int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x) + \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx \\
-&= \int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) \cdot v(x) dx + \int_{0}^{n^{*}} \Big( \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx,
+\int_{0}^{N^{*}} \frac{\partial}{\partial t} u(t,x) \cdot v(x) dx &= \int_{0}^{N^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x) + \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx \\
+&= \int_{0}^{N^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) \cdot v(x) dx + \int_{0}^{N^{*}} \Big( \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx,
 \end{align*}
 z warunkiem początkowym:
 \begin{equation*}
-\int_{0}^{n^{*}} u(0, x) \cdot v(x) dx = \int_{0}^{n^{*}} v(x) dx \quad \forall_{v \in V}.
+\int_{0}^{N^{*}} u(0, x) \cdot v(x) dx = \int_{0}^{N^{*}} v(x) dx \quad \forall_{v \in V}.
 \end{equation*}
 Stosując wzór na całkowanie przez części oraz korzystając z faktów, że $\frac{\partial}{\partial x} u(t,0)=0$ oraz $v(N^{*})=0$, otrzymujemy:
 \begin{align*}
-\int_{0}^{n^{*}} \Big( \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx 
+\int_{0}^{N^{*}} \Big( \frac{1}{2} \sigma^{2}(x) \frac{\partial^{2}}{\partial {x}^{2}} u(t,x)\Big) \cdot v(x) dx 
 &= 
-\int_{0}^{n^{*}} \Big( \frac{1}{2} \sigma^{2}(x)\cdot v(x)\Big) \cdot \frac{\partial^{2}}{\partial {x}^{2}} u(t,x) dx 
+\int_{0}^{N^{*}} \Big( \frac{1}{2} \sigma^{2}(x)\cdot v(x)\Big) \cdot \frac{\partial^{2}}{\partial {x}^{2}} u(t,x) dx 
 = 
-\Big[ \frac{\partial}{\partial x} u(t,x) \cdot \frac{1}{2} \sigma^{2}(x) \cdot v(t) \Big] |_{0}^{n^{*}} \\& - \int_{0}^{n^{*}} \Big( \sigma(x) \cdot \sigma^{'}(x) \cdot v(x) + \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} v(x)\Big) \cdot \frac{\partial}{\partial x} u(t,x) dx 
+\Big[ \frac{\partial}{\partial x} u(t,x) \cdot \frac{1}{2} \sigma^{2}(x) \cdot v(t) \Big] |_{0}^{N^{*}} \\& - \int_{0}^{N^{*}} \Big( \sigma(x) \cdot \sigma^{'}(x) \cdot v(x) + \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} v(x)\Big) \cdot \frac{\partial}{\partial x} u(t,x) dx 
 = \\& =
-- \int_{0}^{n^{*}} \Big( \sigma(x) \cdot \sigma^{'}(x) \cdot v(x) + \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} v(x)\Big) \cdot \frac{\partial}{\partial x} u(t,x) dx.
+- \int_{0}^{N^{*}} \Big( \sigma(x) \cdot \sigma^{'}(x) \cdot v(x) + \frac{1}{2} \sigma^{2}(x) \cdot \frac{\partial}{\partial x} v(x)\Big) \cdot \frac{\partial}{\partial x} u(t,x) dx.
 \end{align*}
 Czyli ostatecznie:
 \begin{equation}\label{mes}
 \begin{aligned}
- \frac{\partial}{\partial t} \int_{0}^{n^{*}} u(t,x) v(x) dx = \int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) v(x) dx &- \int_{0}^{n^{*}} \Big( \sigma(x) \sigma^{'}(x) v(x) + \frac{1}{2} \sigma^{2}(x)  \frac{\partial}{\partial x} v(x)\Big)\frac{\partial}{\partial x} u(t,x) dx, \\
- \int_{0}^{n^{*}} u(0, x) v(x) dx &= \int_{0}^{n^{*}} v(x) dx.
+ \frac{\partial}{\partial t} \int_{0}^{N^{*}} u(t,x) v(x) dx = \int_{0}^{N^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) v(x) dx &- \int_{0}^{N^{*}} \Big( \sigma(x) \sigma^{'}(x) v(x) + \frac{1}{2} \sigma^{2}(x)  \frac{\partial}{\partial x} v(x)\Big)\frac{\partial}{\partial x} u(t,x) dx, \\
+ \int_{0}^{N^{*}} u(0, x) v(x) dx &= \int_{0}^{N^{*}} v(x) dx.
 \end{aligned}
 \end{equation}
 
@@ -223,15 +223,15 @@ Funkcję $u_{h}$ możemy zatem zapisać jako $u_h(t) = \sum_{i = 0}^{N-1} u_i (t
 
 Rozważmy \eqref{mes} dla $v=\phi_k$, gdzie $k=1,\dots,n-2$ (dla pozostałych $k$ rachunki są analogiczne):
 \begin{align*}
-\frac{\partial}{\partial t} \int_{0}^{n^{*}} u(t,x) v(x) dx &= 
+\frac{\partial}{\partial t} \int_{0}^{N^{*}} u(t,x) v(x) dx &= 
 \sum_{i = k-1}^{k+1} \frac{d}{d t} u_i (t) \int_{0}^{N^{*}} \phi_i (x) \phi_k (x) dx,
 \\
-\int_{0}^{n^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) v(x) dx &= \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{N^{*}} b(x) \phi_k (x)  \frac{d}{d x} \phi_i (x)  dx,
+\int_{0}^{N^{*}} \Big( b(x) \frac{\partial}{\partial x} u(t, x)\Big) v(x) dx &= \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{N^{*}} b(x) \phi_k (x)  \frac{d}{d x} \phi_i (x)  dx,
 \\
-\int_{0}^{n^{*}}\sigma(x) \sigma^{'}(x) v(x)\frac{\partial}{\partial x} u(t,x) dx &= 
+\int_{0}^{N^{*}}\sigma(x) \sigma^{'}(x) v(x)\frac{\partial}{\partial x} u(t,x) dx &= 
 \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{N^{*}} \sigma(x) \cdot \sigma^{'}(x) \cdot \phi_k (x) \frac{d}{d x} \phi_i (x) dx,
 \\
-\int_{0}^{n^{*}}\frac{1}{2} \sigma^{2}(x)  \frac{\partial}{\partial x} v(x)\frac{\partial}{\partial x} u(t,x) dx &= 
+\int_{0}^{N^{*}}\frac{1}{2} \sigma^{2}(x)  \frac{\partial}{\partial x} v(x)\frac{\partial}{\partial x} u(t,x) dx &= 
 \sum_{i = k-1}^{k+1} u_i (t) \int_{0}^{N^{*}} \frac{1}{2} \sigma^{2}(x) \cdot \frac{d}{d x} \phi_k (x) \cdot \frac{d}{d x} \phi_i (x) dx.
 \end{align*}
 Oznaczając:
@@ -689,9 +689,11 @@ Błędy uzyskane po zastosowaniu metody elementu skończonego oraz schematu trap
 
 \newpage
 \section{Dyskusja}
-Najlepsze wyniki uzyskaliśmy dla połączenia metody elementu skończonego ze schematem trapezów dla kroku przestrzennego istotnie mniejszego niż krok czasowy. Ogólnie algorytmy oparte na metodzie elementu skończonego dużo lepiej przybliżają funkcję $u$ niż te oparte na metodzie różnic skończonych. Ponadto można je wykorzystać do aproksymacji na całym przedziale $[0, N^{8}]$, w przeciwieństwie do algorytmów opartych na metodzie różnic skończonych, które dają złe wyniki dla $x$ bliskich 0.
+Najdokładniejsze wyniki jeśli chodzi o całkę z funkcji $u$ uzyskaliśmy dla połączenia metody elementu skończonego ze schematem trapezów dla kroku przestrzennego istotnie mniejszego niż krok czasowy. Ogólnie algorytmy oparte na metodzie elementu skończonego dużo lepiej przybliżają całkę z funkcji $u$ niż te oparte na metodzie różnic skończonych. Ponadto algorytmy wykorzystujące MRS dają złe przybliżenia dla $x$ bliskich 0.
+
+Możemy zaobserwować, że dla metody elementu skończonego i schematu trapezów otrzymana funkcja przyjmuje wartości ujemne. Ponieważ w badanym modelu wykorzystujemy moment zerowania się funkcji $u$, to dyskwalifikuje użycie tego schematu w modelu. Wybieramy zatem algorytm oparty na metodzie elementu skończonego i zamkniętym schemacie Eulera.
  
-Rozważmy przyczyny takich różnic. Część błędów wynika z problematycznych warunków początkowych. Przede wszystkim wartości brzegowe są nieciągłe, co powoduje zaburzenia, szczególnie w metodzie różnic skończonych. Aby uniknąć sytuacji, w której rozwiązanie numeryczne zdecydowanie odbiega od spodziewanej wartości funkcji, musieliśmy zmienić warunek początkowy w okolicy punktu nieciągłości.
+Rozważmy przyczyny niedokładności. Część błędów wynika z problematycznych warunków początkowych. Przede wszystkim wartości brzegowe są nieciągłe, co powoduje zaburzenia, szczególnie w metodzie różnic skończonych. Aby uniknąć sytuacji, w której rozwiązanie numeryczne zdecydowanie odbiega od spodziewanej wartości funkcji, musieliśmy zmienić warunek początkowy w okolicy punktu nieciągłości.
 
 Poza tym dany warunek początkowy ma mieszany charakter. Z tego powodu nie jest tak prosty do uwzględnienia, szczególnie w metodzie elementu skończonego.
 \end{document}
